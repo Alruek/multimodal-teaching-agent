@@ -113,3 +113,9 @@ logs/
 .settings
 .vscode/*
 !.vscode/extensions.json
+
+# ==================== 赛事内部资料（不入库） ====================
+粤港澳大湾区AI*赛事手册*.docx
+赛事手册*.docx
+*赛事手册*.docx
+~$*.docx
