@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知屿 ZhiYu · 知识星空图</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#070B14; --bg-1:#0B1020; --bg-2:#121A30;
+    --primary:#6C5CE7; --cyan:#22D3EE; --accent:#00E5C3; --pink:#FF6B9D; --violet:#A78BFA;
+    --green:#34D399; --orange:#FFA94D; --red:#FF5470;
+    --text:#E8EAF6; --text-dim:#9AA3B8;
+    --glass:rgba(255,255,255,.04); --glass-border:rgba(255,255,255,.08);
+    --font-display:'Sora','HarmonyOS Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+    --font-body:'Inter','PingFang SC','Microsoft YaHei',sans-serif;
+    --font-mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:var(--font-body);color:var(--text);min-height:100vh;overflow-x:hidden;
+    background:radial-gradient(1000px 560px at 80% -10%,rgba(108,92,231,.18),transparent 60%),radial-gradient(800px 480px at 0% 20%,rgba(0,229,195,.10),transparent 55%),radial-gradient(700px 500px at 100% 100%,rgba(255,107,157,.08),transparent 55%),linear-gradient(180deg,var(--bg-0),var(--bg-1) 45%,var(--bg-2));
+    -webkit-font-smoothing:antialiased}
+  .grid-overlay{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.45;
+    background-image:linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px);background-size:44px 44px;mask-image:radial-gradient(ellipse at center,#000 30%,transparent 78%)}
+  header{position:sticky;top:0;z-index:40;backdrop-filter:blur(18px);background:rgba(7,11,20,.55);border-bottom:1px solid var(--glass-border)}
+  .nav{max-width:1180px;margin:0 auto;padding:15px 28px;display:flex;align-items:center;gap:14px}
+  .logo{display:flex;align-items:center;gap:12px;font-family:var(--font-display);font-weight:700;font-size:17px}
+  .logo .mark{width:32px;height:32px;border-radius:9px;position:relative;display:grid;place-items:center;background:linear-gradient(135deg,var(--primary),var(--cyan));box-shadow:0 0 20px rgba(108,92,231,.5)}
+  .logo .mark::after{content:"";width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 0 8px #fff}
+  .logo .sub{font-weight:400;font-size:11px;color:var(--text-dim);letter-spacing:1px}
+  .crumb{margin-left:auto;font-size:13px;color:var(--text-dim)}
+  .crumb b{color:var(--text)}
+
+  .wrap{position:relative;z-index:2;max-width:1180px;margin:0 auto;padding:34px 28px 90px}
+  .pagehead{margin-bottom:20px}
+  .pagehead .tag{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--accent);border:1px solid rgba(0,229,195,.3);background:rgba(0,229,195,.07);padding:6px 15px;border-radius:100px;letter-spacing:1.5px}
+  .pagehead h1{font-family:var(--font-display);font-size:clamp(26px,3.5vw,40px);font-weight:800;letter-spacing:-1px;margin:16px 0 10px}
+  .pagehead h1 .grad{background:linear-gradient(120deg,var(--primary-2,var(--primary)),var(--cyan) 60%,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .pagehead p{color:var(--text-dim);font-size:14.5px;max-width:640px;line-height:1.7}
+
+  .legend{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:18px;font-size:12.5px;color:var(--text-dim)}
+  .legend .lg{display:flex;align-items:center;gap:7px}
+  .legend .sw{width:11px;height:11px;border-radius:50%}
+  .legend .sep{opacity:.3}
+  .legend .hint{margin-left:auto;font-size:12px;opacity:.7}
+
+  /* 主布局 */
+  .main{display:grid;grid-template-columns:1fr 290px;gap:18px}
+  .map-card{position:relative;border-radius:20px;background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(20px);overflow:hidden;min-height:560px}
+  .map-card canvas{display:block;width:100%;height:100%;cursor:grab}
+  .map-card canvas:active{cursor:grabbing}
+  .map-corner{position:absolute;top:14px;left:16px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);opacity:.8;pointer-events:none}
+
+  /* tooltip */
+  .tooltip{position:fixed;z-index:55;pointer-events:none;max-width:230px;padding:12px 14px;border-radius:12px;background:rgba(15,20,38,.92);border:1px solid var(--glass-border);backdrop-filter:blur(14px);box-shadow:0 12px 40px rgba(0,0,0,.45);opacity:0;transform:translateY(6px);transition:opacity .18s,transform .18s}
+  .tooltip.show{opacity:1;transform:translateY(0)}
+  .tooltip .tt-name{font-family:var(--font-display);font-weight:700;font-size:14px;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .tooltip .tt-badge{font-size:10px;padding:2px 8px;border-radius:100px}
+  .tooltip .tt-sum{font-size:12px;color:var(--text-dim);line-height:1.6}
+
+  /* 学习路径侧栏 */
+  .path-card{border-radius:20px;background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(20px);padding:20px 18px;display:flex;flex-direction:column;gap:4px;max-height:560px;overflow-y:auto}
+  .path-title{display:flex;align-items:center;gap:8px;font-family:var(--font-display);font-weight:700;font-size:15px;margin-bottom:6px}
+  .path-title .flag{font-size:15px}
+  .path-sub{font-size:12px;color:var(--text-dim);margin-bottom:14px;line-height:1.6}
+  .path-item{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;cursor:pointer;position:relative;transition:.2s;border:1px solid transparent}
+  .path-item:hover{background:rgba(255,255,255,.05);border-color:var(--glass-border)}
+  .path-item.active{background:rgba(0,229,195,.07);border-color:rgba(0,229,195,.3)}
+  .path-item .num{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-family:var(--font-mono);font-size:12px;font-weight:600;flex-shrink:0;border:1px solid var(--glass-border);color:var(--text-dim);transition:.2s}
+  .path-item.active .num{color:#04211b;background:linear-gradient(135deg,var(--accent),var(--cyan));border-color:transparent;box-shadow:0 0 14px rgba(0,229,195,.4)}
+  .path-item .p-name{font-size:13.5px;font-weight:600;flex:1}
+  .path-item .p-diff{font-size:10px;padding:2px 8px;border-radius:100px}
+  .path-item:not(:last-child)::before{content:"";position:absolute;left:24px;bottom:-9px;width:2px;height:10px;background:linear-gradient(180deg,var(--glass-border),transparent)}
+
+  /* drawer */
+  .overlay{position:fixed;inset:0;z-index:60;background:rgba(5,8,16,.5);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .25s}
+  .overlay.show{opacity:1;pointer-events:auto}
+  .drawer{position:fixed;top:0;right:0;bottom:0;z-index:70;width:360px;max-width:88vw;background:linear-gradient(180deg,#0d1326,#0a0f1e);border-left:1px solid var(--glass-border);box-shadow:-20px 0 60px rgba(0,0,0,.5);transform:translateX(105%);transition:transform .32s cubic-bezier(.32,.72,.28,1);padding:26px 24px;overflow-y:auto;display:flex;flex-direction:column}
+  .drawer.show{transform:translateX(0)}
+  .drawer .close{position:absolute;top:18px;right:18px;width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);color:var(--text-dim);cursor:pointer;display:grid;place-items:center;font-size:16px;transition:.2s}
+  .drawer .close:hover{color:var(--text);background:rgba(255,255,255,.1)}
+  .drawer .d-kicker{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);letter-spacing:1px;margin-bottom:10px}
+  .drawer .d-name{font-family:var(--font-display);font-size:24px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+  .drawer .d-name .dot{width:14px;height:14px;border-radius:50%;box-shadow:0 0 12px currentColor;background:currentColor}
+  .drawer .d-meta{display:flex;gap:10px;margin-bottom:22px}
+  .drawer .d-meta .m{flex:1;text-align:center;padding:12px 8px;border-radius:11px;background:rgba(255,255,255,.04);border:1px solid var(--glass-border)}
+  .drawer .d-meta .m .v{font-family:var(--font-mono);font-size:16px;font-weight:600}
+  .drawer .d-meta .m .l{font-size:11px;color:var(--text-dim);margin-top:3px}
+  .drawer .d-section{font-size:12px;color:var(--text-dim);letter-spacing:1px;margin-bottom:10px}
+  .drawer ul.points{list-style:none;display:flex;flex-direction:column;gap:9px;margin-bottom:20px}
+  .drawer ul.points li{font-size:13.5px;color:var(--text);display:flex;gap:9px;line-height:1.6}
+  .drawer ul.points li::before{content:"▸";color:var(--accent);flex-shrink:0}
+  .drawer .example{padding:13px 15px;border-radius:11px;background:rgba(255,255,255,.03);border-left:3px solid var(--accent);font-size:13px;color:var(--text-dim);line-height:1.7;margin-bottom:24px}
+  .drawer .example b{color:var(--text)}
+  .drawer .d-cta{margin-top:auto;display:flex;gap:10px}
+  .drawer .d-cta .btn{flex:1;text-align:center;padding:13px;border-radius:12px;font-family:var(--font-display);font-weight:600;font-size:14px;cursor:pointer;transition:.2s}
+  .drawer .d-cta .btn-primary{background:linear-gradient(135deg,var(--accent),var(--cyan));color:#04211b;border:none;box-shadow:0 6px 20px rgba(0,229,195,.3)}
+  .drawer .d-cta .btn-primary:hover{transform:translateY(-1px)}
+  .drawer .d-cta .btn-ghost{background:rgba(255,255,255,.06);border:1px solid var(--glass-border);color:var(--text)}
+  .drawer .d-cta .btn-ghost:hover{background:rgba(255,255,255,.1)}
+
+  footer{margin-top:50px;text-align:center;color:var(--text-dim);font-size:12px;letter-spacing:.5px}
+
+  @media(max-width:920px){
+    .main{grid-template-columns:1fr}
+    .path-card{max-height:none;flex-direction:row;flex-wrap:wrap;gap:8px;overflow:visible}
+    .path-title,.path-sub{width:100%}
+    .path-item{flex:1 1 auto;min-width:150px}
+    .path-item:not(:last-child)::before{display:none}
+    .map-card{min-height:52vh}
+  }
+</style>
+</head>
+<body>
+<div class="grid-overlay"></div>
+
+<header>
+  <div class="nav">
+    <div class="logo"><div class="mark"></div><div>知屿 ZhiYu <span class="sub">多模态教学智能体</span></div></div>
+    <div class="crumb">知识库 <span style="opacity:.4">/</span> <b>知识星空图</b></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="pagehead">
+    <div class="tag">◆ 会呼吸的知识星空图 · 学习地图</div>
+    <h1>每一个知识点，都是一颗<span class="grad">会呼吸的星球</span></h1>
+    <p>星球大小代表知识点的重要性，颜色代表难度，发光连线代表「先修」关系。拖动、悬停、点击，探索这张属于你的学习宇宙。</p>
+  </div>
+
+  <div class="legend">
+    <span class="lg"><span class="sw" style="background:var(--green)"></span> 易 · easy</span>
+    <span class="lg"><span class="sw" style="background:var(--orange)"></span> 中 · medium</span>
+    <span class="lg"><span class="sw" style="background:var(--red)"></span> 难 · hard</span>
+    <span class="sep">|</span>
+    <span class="lg">星球越大 = 越重要</span>
+    <span class="hint">✦ 悬停高亮关联 · 点击展开要点 · 拖动改变星位</span>
+  </div>
+
+  <div class="main">
+    <div class="map-card" id="mapCard">
+      <div class="map-corner" id="mapCorner"></div>
+      <canvas id="star"></canvas>
+    </div>
+
+    <aside class="path-card">
+      <div class="path-title"><span class="flag">🗺️</span> 学习路径推荐</div>
+      <div class="path-sub">按难度递进串联的关键星球，像一条闯关路线 —— 从易到难，逐个点亮。</div>
+      <div id="pathList" style="display:flex;flex-direction:column;gap:2px"></div>
+    </aside>
+  </div>
+
+  <footer>知屿 ZhiYu · 知识星空图 · 力导向可视化 Demo</footer>
+</div>
+
+<!-- tooltip -->
+<div class="tooltip" id="tooltip"></div>
+
+<!-- drawer -->
+<div class="overlay" id="overlay"></div>
+<aside class="drawer" id="drawer">
+  <button class="close" id="drawerClose">✕</button>
+  <div class="d-kicker" id="dKicker"></div>
+  <div class="d-name"><span class="dot" id="dDot"></span><span id="dName"></span></div>
+  <div class="d-meta">
+    <div class="m"><div class="v" id="dDiff"></div><div class="l">难度</div></div>
+    <div class="m"><div class="v" id="dImp"></div><div class="l">重要性</div></div>
+    <div class="m"><div class="v" id="dReach"></div><div class="l">关联星球</div></div>
+  </div>
+  <div class="d-section">核心要点</div>
+  <ul class="points" id="dPoints"></ul>
+  <div class="d-section">例证</div>
+  <div class="example" id="dExample"></div>
+  <div class="d-cta">
+    <button class="btn btn-primary" id="dStudy">开始学习</button>
+    <button class="btn btn-ghost" id="dAsk">向 AI 老师提问</button>
+  </div>
+</aside>
+
+<script>
+/* ============================================================
+   数据输入格式 —— 后端应返回的 knowledge_points JSON
+   本 demo 将下面这份数据硬编码为示例；对接时替换为接口返回值即可。
+   ============================================================ */
+const knowledge_points = {
+  "subject": "高等数学 · 微积分",
+  "nodes": [
+    { "id": "limits", "name": "函数与极限", "difficulty": "easy",   "importance": 0.92, "summary": "微积分的基石，理解趋近与变化", "points": ["极限的 ε-δ 定义", "无穷小量与等价替换", "两个重要极限"], "example": "x → 0 时，sin x ~ x，可用于化简极限运算。" },
+    { "id": "continuity", "name": "连续与间断", "difficulty": "easy",   "importance": 0.55, "summary": "函数连续的判定与间断点分类", "points": ["连续的三要素", "第一类/第二类间断点", "闭区间连续函数的性质"], "example": "f(x)=1/x 在 x=0 处为无穷间断点。" },
+    { "id": "derivative", "name": "导数与微分", "difficulty": "medium", "importance": 0.85, "summary": "刻画瞬时变化率的核心工具", "points": ["导数的几何意义", "基本求导公式与链式法则", "微分与增量"], "example": "y=x² 在 x=3 处切线斜率为 6。" },
+    { "id": "mvt", "name": "中值定理", "difficulty": "medium", "importance": 0.50, "summary": "连接函数整体与局部的桥梁", "points": ["罗尔定理", "拉格朗日中值定理", "柯西中值定理"], "example": "f(b)-f(a)=f'(ξ)(b-a)，存在 ξ∈(a,b)。" },
+    { "id": "lhopital", "name": "洛必达法则", "difficulty": "easy",   "importance": 0.48, "summary": "求解未定式极限的利器", "points": ["0/0 与 ∞/∞ 型", "可连续多次使用", "注意使用前提"], "example": "lim(x→0) sin x / x = lim cos x / 1 = 1。" },
+    { "id": "integral", "name": "积分与面积", "difficulty": "medium", "importance": 0.80, "summary": "导数的逆运算，累积与面积", "points": ["定积分的黎曼和定义", "牛顿-莱布尼茨公式", "换元与分部积分"], "example": "∫₀¹ x dx = 1/2，即单位三角形面积。" },
+    { "id": "defint", "name": "定积分应用", "difficulty": "hard",   "importance": 0.60, "summary": "用积分解决几何与物理问题", "points": ["平面图形面积", "旋转体体积", "弧长与物理应用"], "example": "y=√x 绕 x 轴旋转体积 V = π∫₀¹ x dx = π/2。" },
+    { "id": "taylor", "name": "泰勒展开", "difficulty": "hard",   "importance": 0.72, "summary": "用多项式逼近复杂函数", "points": ["泰勒与麦克劳林公式", "常用函数展开式", "余项与误差估计"], "example": "eˣ ≈ 1+x+x²/2!+x³/3!，x 越小越准。" },
+    { "id": "series", "name": "无穷级数", "difficulty": "hard",   "importance": 0.55, "summary": "无限项之和的敛散性", "points": ["正项级数判别法", "幂级数与收敛半径", "交错级数"], "example": "几何级数 Σ rⁿ 当 |r|<1 收敛于 1/(1-r)。" },
+    { "id": "diffeq", "name": "微分方程", "difficulty": "hard",   "importance": 0.45, "summary": "描述变化规律的方程", "points": ["可分离变量方程", "一阶线性方程", "常见物理模型"], "example": "dy/dx = ky 的解为 y = C·eᵏˣ。" }
+  ],
+  "edges": [
+    { "source": "limits", "target": "continuity", "relation": "先修" },
+    { "source": "limits", "target": "derivative", "relation": "先修" },
+    { "source": "continuity", "target": "derivative", "relation": "先修" },
+    { "source": "derivative", "target": "mvt", "relation": "先修" },
+    { "source": "derivative", "target": "lhopital", "relation": "先修" },
+    { "source": "limits", "target": "integral", "relation": "先修" },
+    { "source": "derivative", "target": "integral", "relation": "先修" },
+    { "source": "integral", "target": "defint", "relation": "先修" },
+    { "source": "derivative", "target": "taylor", "relation": "先修" },
+    { "source": "integral", "target": "taylor", "relation": "先修" },
+    { "source": "taylor", "target": "series", "relation": "先修" },
+    { "source": "series", "target": "diffeq", "relation": "先修" },
+    { "source": "derivative", "target": "diffeq", "relation": "先修" }
+  ],
+  "learning_path": ["limits", "continuity", "derivative", "integral", "defint", "taylor", "series", "diffeq"]
+};
+
+const DIFF = {
+  easy:   { color: '#34D399', label: '易' },
+  medium: { color: '#FFA94D', label: '中' },
+  hard:   { color: '#FF5470', label: '难' }
+};
+
+/* ===== Canvas 初始化 ===== */
+const canvas = document.getElementById('star');
+const ctx = canvas.getContext('2d');
+const mapCard = document.getElementById('mapCard');
+let W, H, dpr;
+
+function resize(){
+  const rect = mapCard.getBoundingClientRect();
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = rect.width; H = rect.height;
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+resize();
+window.addEventListener('resize', resize);
+
+/* ===== 构建图数据 ===== */
+const byId = {};
+const nodes = knowledge_points.nodes.map((n, i) => {
+  const ang = (i / knowledge_points.nodes.length) * Math.PI * 2 - Math.PI / 2;
+  const radius = Math.min(W, H) * 0.32;
+  const node = {
+    ...n,
+    color: DIFF[n.difficulty].color,
+    r: 15 + n.importance * 22,
+    x: W / 2 + Math.cos(ang) * radius + (Math.random() - 0.5) * 30,
+    y: H / 2 + Math.sin(ang) * radius * 0.85 + (Math.random() - 0.5) * 30,
+    vx: 0, vy: 0, op: 1
+  };
+  byId[n.id] = node;
+  return node;
+});
+const edges = knowledge_points.edges.map(e => ({
+  s: byId[e.source], t: byId[e.target], op: 1, relation: e.relation
+}));
+
+/* 邻接表（用于高亮） */
+const neighbors = {};
+nodes.forEach(n => neighbors[n.id] = new Set());
+edges.forEach(e => { neighbors[e.s.id].add(e.t.id); neighbors[e.t.id].add(e.s.id); });
+
+/* ===== 力导向模拟 ===== */
+let alpha = 1;      // 温度：先展开、后稳定并保留微动
+const IDEAL = 130;  // 边的理想长度
+
+function simulate(){
+  alpha = Math.max(0.02, alpha * 0.988);
+
+  // 1. 斥力（两两）
+  const rep = 9000 * alpha;
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i], b = nodes[j];
+      let dx = a.x - b.x, dy = a.y - b.y;
+      let d = Math.sqrt(dx * dx + dy * dy) + 0.01;
+      const f = rep / (d * d);
+      const fx = (dx / d) * f, fy = (dy / d) * f;
+      a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
+    }
+  }
+  // 2. 弹簧（边）
+  const k = 0.045 * alpha;
+  for (const e of edges) {
+    let dx = e.t.x - e.s.x, dy = e.t.y - e.s.y;
+    let d = Math.sqrt(dx * dx + dy * dy) + 0.01;
+    const f = (d - IDEAL) * k;
+    const fx = (dx / d) * f, fy = (dy / d) * f;
+    e.s.vx += fx; e.s.vy += fy; e.t.vx -= fx; e.t.vy -= fy;
+  }
+  // 3. 中心引力
+  const ck = 0.006;
+  for (const n of nodes) {
+    if (n === dragging) continue;
+    n.vx += (W / 2 - n.x) * ck;
+    n.vy += (H / 2 - n.y) * ck;
+  }
+  // 4. 积分 + 阻尼
+  for (const n of nodes) {
+    if (n === dragging) { n.vx = 0; n.vy = 0; continue; }
+    n.x += n.vx;
+    n.y += n.vy;
+    n.vx *= 0.82;
+    n.vy *= 0.82;
+    // 边界约束
+    n.x = Math.max(n.r, Math.min(W - n.r, n.x));
+    n.y = Math.max(n.r, Math.min(H - n.r, n.y));
+  }
+}
+
+/* ===== 渲染 ===== */
+function lerp(a, b, t){ return a + (b - a) * t; }
+
+function render(t){
+  ctx.clearRect(0, 0, W, H);
+  const breathe = Math.sin(t * 0.0018) * 0.5 + 0.5;
+
+  // —— 边（发光连线，含方向渐变）——
+  for (const e of edges) {
+    const g = ctx.createLinearGradient(e.s.x, e.s.y, e.t.x, e.t.y);
+    g.addColorStop(0, e.s.color);
+    g.addColorStop(1, e.t.color);
+    ctx.globalAlpha = e.op * (0.55 + breathe * 0.2);
+    ctx.strokeStyle = g;
+    ctx.lineWidth = 1.6;
+    ctx.shadowColor = e.s.color;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.moveTo(e.s.x, e.s.y);
+    ctx.lineTo(e.t.x, e.t.y);
+    ctx.stroke();
+  }
+  ctx.shadowBlur = 0;
+
+  // —— 节点 ——
+  for (const n of nodes) {
+    ctx.globalAlpha = n.op;
+    // 呼吸光晕
+    const glowR = n.r * (1.7 + breathe * 0.35);
+    const rg = ctx.createRadialGradient(n.x, n.y, n.r * 0.5, n.x, n.y, glowR);
+    rg.addColorStop(0, n.color + '55');
+    rg.addColorStop(1, n.color + '00');
+    ctx.fillStyle = rg;
+    ctx.beginPath(); ctx.arc(n.x, n.y, glowR, 0, 7); ctx.fill();
+
+    // 星球本体（立体渐变）
+    const body = ctx.createRadialGradient(n.x - n.r * 0.3, n.y - n.r * 0.35, n.r * 0.1, n.x, n.y, n.r);
+    body.addColorStop(0, '#ffffff');
+    body.addColorStop(0.18, n.color);
+    body.addColorStop(1, shade(n.color, -45));
+    ctx.fillStyle = body;
+    ctx.shadowColor = n.color;
+    ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 7); ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // 光环描边
+    ctx.strokeStyle = n.color;
+    ctx.globalAlpha = n.op * 0.5;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(n.x, n.y, n.r + 2.5, 0, 7); ctx.stroke();
+    ctx.globalAlpha = n.op;
+
+    // 名称标签
+    ctx.fillStyle = n.r > 26 ? '#0b1020' : '#E8EAF6';
+    ctx.font = (n.r > 26 ? '600 12px' : '500 11.5px') + ' Inter, "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (n.r > 26) {
+      ctx.fillText(n.name, n.x, n.y);
+    } else {
+      ctx.fillStyle = 'rgba(232,234,246,' + n.op + ')';
+      ctx.fillText(n.name, n.x, n.y + n.r + 14);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function shade(hex, pct){
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  r = Math.max(0, Math.min(255, r + pct));
+  g = Math.max(0, Math.min(255, g + pct));
+  b = Math.max(0, Math.min(255, b + pct));
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
+
+/* ===== 高亮（悬停/选中）===== */
+let highlightId = null, selectedId = null, dragging = null;
+
+function updateHighlight(){
+  const hid = highlightId || selectedId;
+  for (const n of nodes) {
+    const target = hid ? (n.id === hid || neighbors[n.id].has(hid) ? 1 : 0.14) : 1;
+    n.op = lerp(n.op, target, 0.14);
+  }
+  for (const e of edges) {
+    const target = hid ? (e.s.id === hid || e.t.id === hid ? 1 : 0.08) : 1;
+    e.op = lerp(e.op, target, 0.14);
+  }
+}
+
+/* ===== 命中检测 ===== */
+function hitTest(px, py){
+  for (const n of nodes) {
+    const dx = px - n.x, dy = py - n.y;
+    if (dx * dx + dy * dy <= (n.r + 6) * (n.r + 6)) return n;
+  }
+  return null;
+}
+function getPos(e){
+  const r = canvas.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+/* ===== 交互：pointer ===== */
+const tooltip = document.getElementById('tooltip');
+let downNode = null, moved = false;
+
+canvas.addEventListener('pointerdown', e => {
+  const p = getPos(e);
+  const hit = hitTest(p.x, p.y);
+  downNode = hit; moved = false;
+  if (hit) { dragging = hit; canvas.setPointerCapture(e.pointerId); }
+});
+canvas.addEventListener('pointermove', e => {
+  const p = getPos(e);
+  if (dragging) {
+    if (Math.abs(e.movementX) + Math.abs(e.movementY) > 1) moved = true;
+    dragging.x = p.x; dragging.y = p.y;
+    return;
+  }
+  const hit = hitTest(p.x, p.y);
+  if (hit) {
+    highlightId = hit.id;
+    canvas.style.cursor = 'pointer';
+    showTooltip(hit, e.clientX, e.clientY);
+  } else {
+    highlightId = null;
+    canvas.style.cursor = 'grab';
+    hideTooltip();
+  }
+});
+canvas.addEventListener('pointerup', e => {
+  if (dragging && !moved) {
+    // 视为点击
+    openDrawer(dragging);
+    highlightId = dragging.id;
+  }
+  dragging = null;
+});
+canvas.addEventListener('pointerleave', () => { highlightId = null; hideTooltip(); });
+
+function showTooltip(n, cx, cy){
+  tooltip.innerHTML = '<div class="tt-name"><span class="tt-badge" style="color:' + n.color + ';background:' + n.color + '22;border:1px solid ' + n.color + '55">' + DIFF[n.difficulty].label + ' · ' + n.difficulty + '</span>' + n.name + '</div><div class="tt-sum">' + n.summary + '</div>';
+  tooltip.classList.add('show');
+  const w = tooltip.offsetWidth, h = tooltip.offsetHeight;
+  let x = cx + 16, y = cy - h / 2;
+  if (x + w > innerWidth - 10) x = cx - w - 16;
+  if (y < 10) y = 10;
+  if (y + h > innerHeight - 10) y = innerHeight - h - 10;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
+}
+function hideTooltip(){ tooltip.classList.remove('show'); }
+
+/* ===== drawer ===== */
+const drawer = document.getElementById('drawer');
+const overlay = document.getElementById('overlay');
+function openDrawer(n){
+  selectedId = n.id;
+  document.getElementById('dKicker').textContent = 'KNOWLEDGE NODE · ' + n.id.toUpperCase();
+  document.getElementById('dDot').style.color = n.color;
+  document.getElementById('dDot').style.background = n.color;
+  document.getElementById('dName').textContent = n.name;
+  document.getElementById('dDiff').textContent = DIFF[n.difficulty].label;
+  document.getElementById('dDiff').style.color = n.color;
+  document.getElementById('dImp').textContent = Math.round(n.importance * 100) + '%';
+  document.getElementById('dReach').textContent = neighbors[n.id].size;
+  document.getElementById('dPoints').innerHTML = n.points.map(p => '<li>' + p + '</li>').join('');
+  document.getElementById('dExample').innerHTML = '<b>例：</b>' + n.example;
+  drawer.classList.add('show');
+  overlay.classList.add('show');
+  syncPathActive(n.id);
+}
+function closeDrawer(){
+  drawer.classList.remove('show');
+  overlay.classList.remove('show');
+  selectedId = null;
+  syncPathActive(null);
+}
+document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+overlay.addEventListener('click', closeDrawer);
+document.getElementById('dStudy').addEventListener('click', closeDrawer);
+document.getElementById('dAsk').addEventListener('click', closeDrawer);
+
+/* ===== 学习路径侧栏 ===== */
+const pathList = document.getElementById('pathList');
+function syncPathActive(id){
+  pathList.querySelectorAll('.path-item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+}
+knowledge_points.learning_path.forEach((id, i) => {
+  const n = byId[id];
+  const el = document.createElement('div');
+  el.className = 'path-item';
+  el.dataset.id = id;
+  el.innerHTML = '<span class="num">' + (i + 1) + '</span><span class="p-name">' + n.name + '</span><span class="p-diff" style="color:' + n.color + ';background:' + n.color + '1a;border:1px solid ' + n.color + '44">' + DIFF[n.difficulty].label + '</span>';
+  el.addEventListener('click', () => {
+    highlightId = id;
+    openDrawer(n);
+  });
+  pathList.appendChild(el);
+});
+
+/* ===== 主循环 ===== */
+document.getElementById('mapCorner').textContent = knowledge_points.nodes.length + ' 节点 · ' + knowledge_points.edges.length + ' 关系';
+function loop(t){
+  simulate();
+  updateHighlight();
+  render(t);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

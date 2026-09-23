@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知屿 ZhiYu · 上传与解析</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#070B14; --bg-1:#0B1020; --bg-2:#121A30;
+    --primary:#6C5CE7; --primary-2:#8B7CF7;
+    --accent:#00E5C3; --cyan:#22D3EE; --pink:#FF6B9D; --orange:#FFA94D; --violet:#A78BFA; --green:#34D399; --red:#FF5470;
+    --text:#E8EAF6; --text-dim:#9AA3B8;
+    --glass:rgba(255,255,255,.04); --glass-border:rgba(255,255,255,.08);
+    --radius:20px;
+    --font-display:'Sora','HarmonyOS Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+    --font-body:'Inter','PingFang SC','Microsoft YaHei',sans-serif;
+    --font-mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:var(--font-body); color:var(--text); min-height:100vh; overflow-x:hidden;
+    background:radial-gradient(1100px 600px at 80% -10%, rgba(108,92,231,.20), transparent 60%),
+               radial-gradient(900px 500px at 0% 15%, rgba(0,229,195,.11), transparent 55%),
+               radial-gradient(800px 600px at 100% 100%, rgba(255,107,157,.09), transparent 55%),
+               linear-gradient(180deg,var(--bg-0),var(--bg-1) 45%,var(--bg-2));
+    -webkit-font-smoothing:antialiased;
+  }
+  #bg{position:fixed;inset:0;z-index:0;pointer-events:none}
+  .grid-overlay{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;
+    background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+    background-size:44px 44px; mask-image:radial-gradient(ellipse at center,#000 30%,transparent 78%);}
+  .wrap{position:relative;z-index:2;max-width:1040px;margin:0 auto;padding:0 28px 120px}
+
+  /* ===== 顶部 ===== */
+  header{position:sticky;top:0;z-index:50;backdrop-filter:blur(18px);background:rgba(7,11,20,.55);border-bottom:1px solid var(--glass-border)}
+  .nav{max-width:1040px;margin:0 auto;padding:16px 28px;display:flex;align-items:center;gap:14px}
+  .logo{display:flex;align-items:center;gap:12px;font-family:var(--font-display);font-weight:700;font-size:17px;letter-spacing:.5px}
+  .logo .mark{width:32px;height:32px;border-radius:9px;position:relative;display:grid;place-items:center;background:linear-gradient(135deg,var(--primary),var(--cyan));box-shadow:0 0 20px rgba(108,92,231,.5)}
+  .logo .mark::after{content:"";width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 0 8px #fff}
+  .logo .sub{font-weight:400;font-size:11px;color:var(--text-dim);letter-spacing:1px}
+  .crumb{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dim)}
+  .crumb b{color:var(--text)}
+
+  /* ===== 页头 ===== */
+  .pagehead{padding:56px 0 8px;text-align:center}
+  .pagehead .tag{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--accent);border:1px solid rgba(0,229,195,.3);background:rgba(0,229,195,.07);padding:6px 15px;border-radius:100px;letter-spacing:1.5px}
+  .pagehead h1{font-family:var(--font-display);font-size:clamp(28px,4vw,44px);font-weight:800;letter-spacing:-1px;margin:20px 0 12px}
+  .pagehead h1 .grad{background:linear-gradient(120deg,var(--primary-2),var(--cyan) 60%,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .pagehead p{color:var(--text-dim);font-size:15px}
+
+  /* ===== 上传面板 ===== */
+  .upload-card{position:relative;margin:36px auto 0;border-radius:var(--radius);background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(22px);overflow:hidden;transition:.35s;max-width:760px}
+  .upload-card::before{content:"";position:absolute;inset:-1px;border-radius:var(--radius);padding:1px;background:linear-gradient(140deg,rgba(139,124,247,.5),transparent 40%,rgba(0,229,195,.4));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.55;pointer-events:none}
+  .upload-card.hot{border-color:rgba(0,229,195,.55);box-shadow:0 0 0 1px rgba(0,229,195,.3),0 20px 60px rgba(0,229,195,.12)}
+  .upload-zone{position:relative;padding:58px 30px 52px;display:flex;flex-direction:column;align-items:center;gap:18px;cursor:pointer;text-align:center;min-height:360px;justify-content:center}
+  .upload-zone .frame{position:absolute;inset:18px;border:1.5px dashed rgba(255,255,255,.16);border-radius:14px;pointer-events:none;transition:.3s}
+  .upload-zone:hover .frame{border-color:rgba(0,229,195,.35)}
+  .upload-card.hot .frame{border-color:var(--accent);box-shadow:inset 0 0 40px rgba(0,229,195,.08)}
+  .maw{position:relative;width:128px;height:128px}
+  .maw canvas{position:absolute;inset:0}
+  .maw .core{position:absolute;inset:0;margin:auto;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;transition:.4s;
+    background:radial-gradient(circle at 35% 30%,rgba(0,229,195,.95),rgba(108,92,231,.55) 70%);box-shadow:0 0 44px rgba(0,229,195,.5),inset 0 0 18px rgba(255,255,255,.3)}
+  .maw .core svg{width:28px;height:28px}
+  /* 状态色彩 */
+  body[data-state="success"] .maw .core{background:radial-gradient(circle at 35% 30%,#34D399,#0c8a6b 75%);box-shadow:0 0 44px rgba(52,211,153,.55)}
+  body[data-state="error"] .maw .core{background:radial-gradient(circle at 35% 30%,#FF5470,#8f2b3d 75%);box-shadow:0 0 44px rgba(255,84,112,.5);animation:shake .5s}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+
+  .uz-title{font-family:var(--font-display);font-weight:700;font-size:22px}
+  .uz-title b{color:var(--accent)}
+  .uz-sub{font-size:14px;color:var(--text-dim);line-height:1.8;max-width:420px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .chip{font-size:12px;color:var(--text-dim);background:rgba(255,255,255,.05);border:1px solid var(--glass-border);padding:5px 12px;border-radius:8px;font-family:var(--font-mono)}
+
+  /* 空状态：等待投喂的第一课 */
+  .empty-extra{margin-top:4px;font-size:13px;color:var(--text-dim);opacity:.9}
+  .empty-extra .spark{color:var(--orange)}
+  .waiting-cue{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-dim)}
+  .waiting-cue .line{width:52px;height:1px;background:linear-gradient(90deg,transparent,var(--glass-border))}
+
+  /* 上传中 / 文件名 */
+  .uploading-state, .done-state, .error-state{display:none;flex-direction:column;align-items:center;gap:14px;text-align:center}
+  body[data-state="uploading"] .uploading-state{display:flex}
+  body[data-state="success"] .done-state{display:flex}
+  body[data-state="error"] .error-state{display:flex}
+  body[data-state="empty"] .empty-state{display:flex}
+  body[data-state="uploading"] .empty-state, body[data-state="success"] .empty-state, body[data-state="error"] .empty-state{display:none}
+  .empty-state{display:flex;flex-direction:column;align-items:center;gap:18px}
+  .file-pill{display:inline-flex;align-items:center;gap:10px;font-size:13px;background:rgba(0,229,195,.08);border:1px solid rgba(0,229,195,.3);color:var(--accent);padding:7px 16px;border-radius:100px;font-family:var(--font-mono)}
+  .status-msg{font-family:var(--font-display);font-weight:600;font-size:17px}
+  .status-msg .dots::after{content:"";animation:dots 1.4s steps(4,end) infinite}
+  @keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
+  .btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-display);font-weight:600;font-size:14px;padding:11px 24px;border-radius:12px;cursor:pointer;border:none;transition:.25s}
+  .btn-primary{background:linear-gradient(135deg,var(--accent),var(--cyan));color:#04211b;box-shadow:0 6px 24px rgba(0,229,195,.35)}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 32px rgba(0,229,195,.5)}
+  .btn-ghost{background:rgba(255,255,255,.06);border:1px solid var(--glass-border);color:var(--text)}
+  .btn-ghost:hover{background:rgba(255,255,255,.1)}
+  .err-reason{font-size:13px;color:var(--text-dim)}
+
+  /* ===== 步骤条 ===== */
+  .steps-section{display:none;max-width:760px;margin:34px auto 0;padding:28px 30px;border-radius:var(--radius);background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(20px)}
+  body[data-state="uploading"] .steps-section{display:block}
+  .steps{display:flex;align-items:flex-start;justify-content:space-between}
+  .step{flex:1;display:flex;flex-direction:column;align-items:center;position:relative;gap:12px}
+  .step .icon{width:54px;height:54px;border-radius:16px;display:grid;place-items:center;position:relative;background:rgba(255,255,255,.04);border:1px solid var(--glass-border);transition:.35s}
+  .step .icon svg{width:26px;height:26px}
+  .step .label{font-size:13px;font-weight:600;color:var(--text-dim);transition:.3s}
+  .step .mini{font-size:11px;color:var(--text-dim);opacity:.7;min-height:14px;transition:.3s}
+  /* 连接线 */
+  .step:not(:last-child)::after{content:"";position:absolute;top:27px;left:calc(50% + 34px);width:calc(100% - 68px);height:2px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
+  .step:not(:last-child)::before{content:"";position:absolute;top:27px;left:calc(50% + 34px);width:calc(100% - 68px);height:2px;border-radius:2px;background:linear-gradient(90deg,var(--accent),var(--cyan));transform:scaleX(0);transform-origin:left;transition:transform .6s ease;z-index:1}
+  .step.running .icon{border-color:rgba(0,229,195,.5);box-shadow:0 0 22px rgba(0,229,195,.25);background:rgba(0,229,195,.06)}
+  .step.running .label{color:var(--text)}
+  .step.running .mini{color:var(--accent)}
+  .step.done .icon{background:rgba(0,229,195,.12);border-color:rgba(0,229,195,.5);box-shadow:0 0 18px rgba(0,229,195,.3)}
+  .step.done .label{color:var(--accent)}
+  .step.done:not(:last-child)::before{transform:scaleX(1)}
+  /* 图标动画 */
+  .step.running .scan{animation:scan 1.2s ease-in-out infinite}
+  .step.running .dotsy span{animation:rise 1s ease-in-out infinite}
+  .step.running .dotsy span:nth-child(2){animation-delay:.2s}
+  .step.running .dotsy span:nth-child(3){animation-delay:.4s}
+  .step.running .nodey circle{animation:nodePulse 1.2s ease-in-out infinite}
+  .step.running .nodey circle:nth-child(2){animation-delay:.3s}
+  .step.running .nodey circle:nth-child(3){animation-delay:.6s}
+  .step.running .chaty{animation:bob 1.4s ease-in-out infinite}
+  @keyframes scan{0%,100%{transform:translateY(-6px)}50%{transform:translateY(6px)}}
+  @keyframes rise{0%{opacity:0;transform:translateY(0)}30%{opacity:1}100%{opacity:0;transform:translateY(-8px)}}
+  @keyframes nodePulse{0%,100%{opacity:.4}50%{opacity:1}}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+  .step .check{position:absolute;opacity:0;transform:scale(.3);transition:.3s cubic-bezier(.34,1.56,.64,1)}
+  .step.done .check{opacity:1;transform:scale(1)}
+  .step.done .raw{opacity:.25;transform:scale(.85)}
+  .step .raw{transition:.3s}
+
+  /* 实时日志 */
+  .log{display:flex;align-items:center;gap:10px;margin-top:26px;padding:12px 16px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid var(--glass-border);font-size:13px;color:var(--text-dim)}
+  .log .cursor{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);animation:pulse 1.4s infinite;flex-shrink:0}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .log .logtxt{font-family:var(--font-mono);font-size:12.5px}
+  .log .logtxt .hl{color:var(--accent)}
+
+  /* ===== 结果区 ===== */
+  .result-section{display:none;margin-top:36px}
+  body[data-state="success"] .result-section{display:block}
+  .result-head{display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+  .result-head .ok{width:34px;height:34px;border-radius:10px;background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.4);display:grid;place-items:center;color:var(--green)}
+  .result-head h2{font-family:var(--font-display);font-size:22px;font-weight:700}
+  .result-head .meta{font-family:var(--font-mono);font-size:12px;color:var(--text-dim)}
+  .tabs{display:inline-flex;background:rgba(255,255,255,.05);border:1px solid var(--glass-border);border-radius:12px;padding:4px;margin-left:auto;gap:4px}
+  .tab{padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;color:var(--text-dim);cursor:pointer;transition:.25s;border:none;background:none;font-family:var(--font-body)}
+  .tab.active{background:linear-gradient(135deg,var(--primary),#5b4bc9);color:#fff;box-shadow:0 4px 16px rgba(108,92,231,.4)}
+  .tab:hover:not(.active){color:var(--text)}
+
+  /* 卡片视图 */
+  .cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+  .kcard{position:relative;border-radius:16px;padding:20px;background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(16px);transition:.28s;overflow:hidden;opacity:0;transform:translateY(16px);animation:cardIn .5s forwards}
+  .kcard:hover{border-color:rgba(0,229,195,.4);transform:translateY(-4px);box-shadow:0 14px 40px rgba(0,0,0,.35)}
+  .kcard::before{content:"";position:absolute;top:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,var(--cc),transparent);opacity:.7}
+  @keyframes cardIn{to{opacity:1;transform:translateY(0)}}
+  .kcard .top{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .kcard .idx{font-family:var(--font-mono);font-size:11px;color:var(--text-dim)}
+  .kcard .name{font-family:var(--font-display);font-weight:700;font-size:16px;flex:1}
+  .badge{font-size:11px;font-weight:600;padding:4px 11px;border-radius:100px;letter-spacing:.5px}
+  .badge.easy{color:var(--green);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.35)}
+  .badge.mid{color:var(--cyan);background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.35)}
+  .badge.hard{color:var(--pink);background:rgba(255,107,157,.12);border:1px solid rgba(255,107,157,.35)}
+  .kcard .points{list-style:none;display:flex;flex-direction:column;gap:8px}
+  .kcard .points li{font-size:13px;color:var(--text-dim);line-height:1.6;display:flex;gap:8px}
+  .kcard .points li::before{content:"▸";color:var(--cc);flex-shrink:0}
+  .kcard .example{margin-top:14px;padding:11px 14px;border-radius:10px;background:rgba(255,255,255,.03);border-left:3px solid var(--cc);font-size:12.5px;color:var(--text-dim);line-height:1.6}
+  .kcard .example b{color:var(--text)}
+
+  /* 大纲视图 */
+  .outline{display:none;border-radius:16px;background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(16px);padding:8px}
+  .outline.show{display:block}
+  .ol-chapter{border-bottom:1px solid var(--glass-border)}
+  .ol-chapter:last-child{border-bottom:none}
+  .ol-head{display:flex;align-items:center;gap:12px;padding:15px 18px;cursor:pointer;transition:.2s;border-radius:12px}
+  .ol-head:hover{background:rgba(255,255,255,.04)}
+  .ol-head .arrow{width:20px;height:20px;display:grid;place-items:center;color:var(--text-dim);transition:transform .3s}
+  .ol-head .arrow svg{width:14px;height:14px}
+  .ol-chapter.open .ol-head .arrow{transform:rotate(90deg)}
+  .ol-head .c-name{font-family:var(--font-display);font-weight:600;font-size:15px}
+  .ol-head .c-count{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-left:auto}
+  .ol-body{max-height:0;overflow:hidden;transition:max-height .35s ease}
+  .ol-body .ol-item{display:flex;align-items:center;gap:10px;padding:11px 18px 11px 50px;font-size:13.5px;color:var(--text-dim);cursor:pointer;transition:.15s}
+  .ol-body .ol-item:hover{color:var(--text);background:rgba(0,229,195,.05)}
+  .ol-body .ol-item .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;box-shadow:0 0 6px var(--accent)}
+  .ol-body .ol-item .lev{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-left:auto}
+
+  /* 失败区 */
+  .error-section{display:none;max-width:760px;margin:36px auto 0;padding:44px 30px;text-align:center;border-radius:var(--radius);background:var(--glass);border:1px solid rgba(255,84,112,.3);backdrop-filter:blur(20px)}
+  body[data-state="error"] .error-section{display:block}
+  .error-section .e-icon{width:64px;height:64px;margin:0 auto 18px;border-radius:50%;background:rgba(255,84,112,.12);border:1px solid rgba(255,84,112,.4);display:grid;place-items:center;color:var(--red);font-size:30px;font-weight:700}
+  .error-section h3{font-family:var(--font-display);font-size:20px;margin-bottom:10px}
+  .error-section p{font-size:14px;color:var(--text-dim);margin-bottom:22px;line-height:1.7}
+
+  /* 状态预览控制条 */
+  .state-dock{position:fixed;right:20px;bottom:20px;z-index:60;display:flex;gap:6px;padding:6px;border-radius:14px;background:rgba(11,16,32,.85);border:1px solid var(--glass-border);backdrop-filter:blur(16px)}
+  .state-dock .sbtn{font-size:12px;color:var(--text-dim);padding:8px 14px;border-radius:9px;cursor:pointer;border:1px solid transparent;background:none;font-family:var(--font-body);transition:.2s;white-space:nowrap}
+  .state-dock .sbtn:hover{color:var(--text);background:rgba(255,255,255,.06)}
+  .state-dock .sbtn.on{color:var(--accent);border-color:rgba(0,229,195,.4);background:rgba(0,229,195,.08)}
+  .state-dock .cap{font-size:11px;color:var(--text-dim);align-self:center;padding:0 6px;letter-spacing:1px}
+
+  footer{margin-top:70px;text-align:center;color:var(--text-dim);font-size:12px;letter-spacing:.5px}
+  @media(max-width:820px){ .steps{flex-wrap:wrap;gap:20px} .step:not(:last-child)::after,.step:not(:last-child)::before{display:none} }
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="grid-overlay"></div>
+
+<header>
+  <div class="nav">
+    <div class="logo"><div class="mark"></div><div>知屿 ZhiYu <span class="sub">多模态教学智能体</span></div></div>
+    <div class="crumb">工作台 <span style="opacity:.4">/</span> <b>上传与解析</b></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="pagehead">
+    <div class="tag">◆ 上传 · 解析 · 结构化</div>
+    <h1>把知识交给我，<span class="grad">我替你读透</span></h1>
+    <p>上传图片、PDF 或课件，AI 老师自动解析，把散落的资料整理成可问答的知识点。</p>
+  </div>
+
+  <!-- 上传面板 -->
+  <div class="upload-card" id="uploadCard">
+    <div class="upload-zone" id="uploadZone">
+      <div class="frame"></div>
+      <div class="maw">
+        <canvas id="mawCanvas" width="128" height="128"></canvas>
+        <div class="core" id="core">
+          <svg id="coreIcon" viewBox="0 0 24 24" fill="none" stroke="#04211b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 16V4M12 4L7 9M12 4l5 5"/><path d="M4 20h16"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- 空状态 -->
+      <div class="empty-state">
+        <div class="uz-title">等待投喂<b>知识的第一课</b></div>
+        <div class="uz-sub">拖拽图片 / PDF 到这里，或点击选择文件。<br>AI 老师会坐镇其中，把资料读成一张会生长的知识图。</div>
+        <div class="chips"><span class="chip">.png / .jpg</span><span class="chip">.pdf</span><span class="chip">.pptx</span><span class="chip">.docx</span></div>
+        <div class="empty-extra"><span class="spark">✦</span> 现在还是空空的，等你来点亮第一格</div>
+      </div>
+
+      <!-- 上传中 -->
+      <div class="uploading-state">
+        <div class="file-pill" id="filePill">📄 正在载入…</div>
+        <div class="status-msg">AI 老师坐镇中，正在读你的资料<span class="dots"></span></div>
+        <div class="waiting-cue"><span class="line"></span><span>稍等片刻，马上就好</span><span class="line"></span></div>
+      </div>
+
+      <!-- 成功 -->
+      <div class="done-state">
+        <div class="file-pill" id="donePill" style="color:var(--green);border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.08)">✓ 解析完成</div>
+        <div class="status-msg">已为你提炼出 <span style="color:var(--accent)">7</span> 个知识点</div>
+        <button class="btn btn-ghost" id="reupload">重新上传</button>
+      </div>
+
+      <!-- 失败 -->
+      <div class="error-state">
+        <div class="status-msg" style="color:var(--red)">解析失败，没读明白</div>
+        <div class="err-reason">文件可能已损坏、被加密，或格式暂不支持。</div>
+        <button class="btn btn-ghost" id="retryUpload">重新试试</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 步骤条 -->
+  <div class="steps-section">
+    <div class="steps">
+      <div class="step" id="step0">
+        <div class="icon">
+          <svg class="raw" viewBox="0 0 24 24" fill="none" stroke="#00E5C3" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect class="scan" x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 10h18"/></svg>
+          <svg class="check" viewBox="0 0 24 24" fill="none" stroke="#00E5C3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+        </div>
+        <div class="label">识别</div>
+        <div class="mini">读取页面结构</div>
+      </div>
+      <div class="step" id="step1">
+        <div class="icon">
+          <svg class="raw" viewBox="0 0 24 24" fill="none" stroke="#22D3EE" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V6"/><path d="M16 20V12"/><path d="M22 20V4"/></svg>
+          <svg class="check" viewBox="0 0 24 24" fill="none" stroke="#00E5C3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+        </div>
+        <div class="label">提取</div>
+        <div class="mini">抽取知识点</div>
+      </div>
+      <div class="step" id="step2">
+        <div class="icon">
+          <svg class="raw nodey" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="18" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M11 7L6.5 15.5M13 7l4.5 8.5"/></svg>
+          <svg class="check" viewBox="0 0 24 24" fill="none" stroke="#00E5C3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+        </div>
+        <div class="label">结构化</div>
+        <div class="mini">建立知识脉络</div>
+      </div>
+      <div class="step" id="step3">
+        <div class="icon">
+          <svg class="raw chaty" viewBox="0 0 24 24" fill="none" stroke="#FF6B9D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5z"/><path d="M8.5 11h.01M12 11h.01M15.5 11h.01"/></svg>
+          <svg class="check" viewBox="0 0 24 24" fill="none" stroke="#00E5C3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+        </div>
+        <div class="label">可答疑</div>
+        <div class="mini">随时准备回答</div>
+      </div>
+    </div>
+    <div class="log"><span class="cursor"></span><span class="logtxt" id="logtxt">正在初始化 AI 老师…</span></div>
+  </div>
+
+  <!-- 结果区 -->
+  <div class="result-section">
+    <div class="result-head">
+      <div class="ok"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></div>
+      <h2>解析结果</h2>
+      <span class="meta" id="resultMeta">《高等数学 · 微积分》 · 7 个知识点</span>
+      <div class="tabs">
+        <button class="tab active" data-view="cards">知识点卡片</button>
+        <button class="tab" data-view="outline">大纲视图</button>
+      </div>
+    </div>
+
+    <!-- 卡片视图 -->
+    <div class="cards-grid" id="cardsView"></div>
+
+    <!-- 大纲视图 -->
+    <div class="outline" id="outlineView"></div>
+  </div>
+
+  <!-- 失败区 -->
+  <div class="error-section">
+    <div class="e-icon">!</div>
+    <h3>这页资料没读明白</h3>
+    <p>文件可能已损坏、被加密，或格式暂不支持。<br>换个文件，或检查后再试一次。</p>
+    <button class="btn btn-primary" id="retryFromError">重新上传</button>
+  </div>
+
+  <footer>知屿 ZhiYu · 上传与解析 · 视觉概念 Demo</footer>
+</div>
+
+<!-- 状态预览控制条 -->
+<div class="state-dock">
+  <span class="cap">预览</span>
+  <button class="sbtn on" data-s="empty">空状态</button>
+  <button class="sbtn" data-s="uploading">上传中</button>
+  <button class="sbtn" data-s="success">成功</button>
+  <button class="sbtn" data-s="error">失败</button>
+</div>
+
+<script>
+const body=document.body;
+// ===== 背景粒子 =====
+const bg=document.getElementById('bg'); const bgc=bg.getContext('2d'); let W,H; const pts=[];
+function resize(){W=bg.width=innerWidth;H=bg.height=innerHeight;} resize(); addEventListener('resize',resize);
+const cols=['#6C5CE7','#00E5C3','#22D3EE','#FF6B9D','#A78BFA'];
+for(let i=0;i<55;i++)pts.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.5+.4,s:Math.random()*.22+.04,c:cols[i%cols.length]});
+(function tick(){bgc.clearRect(0,0,W,H);for(const p of pts){p.y-=p.s;if(p.y<0){p.y=H;p.x=Math.random()*W;}bgc.beginPath();bgc.arc(p.x,p.y,p.r,0,7);bgc.fillStyle=p.c;bgc.globalAlpha=.5;bgc.fill();}bgc.globalAlpha=1;requestAnimationFrame(tick);})();
+
+// ===== 上传区粒子（随状态变化）=====
+const mc=document.getElementById('mawCanvas').getContext('2d'); const mp=[];
+for(let i=0;i<16;i++)mp.push({a:i/16*Math.PI*2,R:46+Math.random()*10,sp:Math.random()*Math.PI*2});
+function drawMaw(t){
+  mc.clearRect(0,0,128,128); const s=body.dataset.state||'empty'; const cx=64,cy=64;
+  const color = s==='error'?'#FF5470':(s==='success'?'#34D399':'#00E5C3');
+  for(const p of mp){
+    let R,alpha;
+    if(s==='uploading'){ R=p.R*(0.5+0.5*Math.sin(t*.004+p.sp)); alpha=.9; }
+    else if(s==='success'){ R=p.R; alpha=.6; }
+    else if(s==='error'){ R=p.R; alpha=.7; }
+    else { R=p.R; alpha=.55; }
+    const ang=p.a + t*(s==='uploading'?.0022:.0010);
+    const x=cx+Math.cos(ang)*R, y=cy+Math.sin(ang)*R*.82;
+    mc.beginPath(); mc.arc(x,y,s==='uploading'?2.6:2,0,7); mc.fillStyle=color;
+    mc.shadowColor=color; mc.shadowBlur=7; mc.globalAlpha=alpha; mc.fill();
+  }
+  mc.shadowBlur=0; mc.globalAlpha=1; requestAnimationFrame(drawMaw);
+} requestAnimationFrame(drawMaw);
+
+// ===== 数据 =====
+const cards=[
+  {name:'函数与极限',level:'easy',levelTxt:'入门',cc:'#00E5C3',points:['函数的三要素与定义域','极限的 ε-δ 定义','无穷小与等价替换'],example:'<b>例：</b>当 x→0 时，sin x ~ x，可用于化简极限运算。'},
+  {name:'导数与微分',level:'mid',levelTxt:'进阶',cc:'#22D3EE',points:['导数的几何意义（切线斜率）','基本求导公式与链式法则','微分与增量的关系'],example:'<b>例：</b>y=x² 在 x=3 处的切线斜率为 2×3=6。'},
+  {name:'中值定理',level:'mid',levelTxt:'进阶',cc:'#A78BFA',points:['罗尔定理的三个条件','拉格朗日中值定理','柯西中值定理的应用'],example:'<b>例：</b>f 在 [a,b] 连续可导，则存在 ξ 使 f(b)-f(a)=f\'(ξ)(b-a)。'},
+  {name:'洛必达法则',level:'easy',levelTxt:'入门',cc:'#34D399',points:['0/0 与 ∞/∞ 型未定式','求导后仍可继续洛必达','注意使用前提条件'],example:'<b>例：</b>lim(x→0) sin x / x = lim(x→0) cos x / 1 = 1。'},
+  {name:'积分与面积',level:'mid',levelTxt:'进阶',cc:'#A78BFA',points:['定积分的黎曼和定义','牛顿-莱布尼茨公式','换元积分与分部积分'],example:'<b>例：</b>∫₀¹ x dx = 1/2，几何上即单位正方形下三角形面积。'},
+  {name:'定积分应用',level:'hard',levelTxt:'挑战',cc:'#FF6B9D',points:['平面图形面积','旋转体体积','弧长与物理应用'],example:'<b>例：</b>y=√x 绕 x 轴旋转一周的体积 V=π∫₀¹ x dx=π/2。'},
+  {name:'泰勒展开',level:'hard',levelTxt:'挑战',cc:'#FFA94D',points:['泰勒公式与麦克劳林展开','常用函数的展开式','余项与误差估计'],example:'<b>例：</b>eˣ ≈ 1+x+x²/2!+x³/3!，x 越小拟合越准。'},
+];
+const outline=[
+  {ch:'第一章 函数与极限',items:[['1.1 函数的概念与性质','入门'],['1.2 极限的定义','入门'],['1.3 无穷小与等价替换','入门']]},
+  {ch:'第二章 微分学',items:[['2.1 导数与微分','进阶'],['2.2 中值定理','进阶'],['2.3 洛必达法则','入门']]},
+  {ch:'第三章 积分学',items:[['3.1 积分与面积','进阶'],['3.2 定积分应用','挑战']]},
+  {ch:'第四章 级数展开',items:[['4.1 泰勒展开','挑战']]},
+];
+
+// 渲染卡片
+const cardsView=document.getElementById('cardsView');
+cards.forEach((c,i)=>{
+  const el=document.createElement('div'); el.className='kcard'; el.style.setProperty('--cc',c.cc); el.style.animationDelay=(i*70)+'ms';
+  el.innerHTML=`<div class="top"><span class="idx">${String(i+1).padStart(2,'0')}</span><span class="name">${c.name}</span><span class="badge ${c.level}">${c.levelTxt}</span></div>
+    <ul class="points">${c.points.map(p=>`<li>${p}</li>`).join('')}</ul>
+    <div class="example">${c.example}</div>`;
+  cardsView.appendChild(el);
+});
+
+// 渲染大纲
+const outlineView=document.getElementById('outlineView');
+outline.forEach((ch,i)=>{
+  const chEl=document.createElement('div'); chEl.className='ol-chapter'+(i===0?' open':'');
+  chEl.innerHTML=`<div class="ol-head"><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span><span class="c-name">${ch.ch}</span><span class="c-count">${ch.items.length} 节</span></div>
+    <div class="ol-body">${ch.items.map(([t,l])=>`<div class="ol-item"><span class="dot"></span>${t}<span class="lev">${l}</span></div>`).join('')}</div>`;
+  outlineView.appendChild(chEl);
+  const head=chEl.querySelector('.ol-head'), bodyEl=chEl.querySelector('.ol-body');
+  head.addEventListener('click',()=>{ const open=chEl.classList.toggle('open'); bodyEl.style.maxHeight=open?bodyEl.scrollHeight+'px':'0'; });
+  if(i===0) bodyEl.style.maxHeight=bodyEl.scrollHeight+'px';
+});
+
+// ===== 状态机 =====
+function setState(s){
+  body.setAttribute('data-state',s);
+  document.querySelectorAll('.state-dock .sbtn').forEach(b=>b.classList.toggle('on',b.dataset.s===s));
+}
+const steps=['识别','提取','结构化','可答疑'];
+const logs=[
+  ['正在识别页面结构…','识别出 <span class="hl">24 页</span> 内容，3 张图片'],
+  ['正在抽取知识点…','已提取 <span class="hl">7</span> 个核心知识点'],
+  ['正在建立知识脉络…','知识点关联度 <span class="hl">86%</span>，脉络清晰'],
+  ['准备就绪，可以提问了 <span class="hl">✦</span>','']
+];
+function resetSteps(){ steps.forEach((_,i)=>{ const el=document.getElementById('step'+i); el.classList.remove('running','done'); }); }
+function runSteps(done){
+  resetSteps(); setState('uploading');
+  let i=0;
+  function next(){
+    if(i>0){ document.getElementById('step'+(i-1)).classList.remove('running'); document.getElementById('step'+(i-1)).classList.add('done'); }
+    if(i>=steps.length){ done&&done(); return; }
+    const el=document.getElementById('step'+i); el.classList.add('running');
+    document.getElementById('logtxt').innerHTML=logs[i][0];
+    setTimeout(()=>{ if(logs[i][1]) document.getElementById('logtxt').innerHTML=logs[i][1]; },650);
+    i++; setTimeout(next, 1350);
+  }
+  next();
+}
+
+// ===== 交互 =====
+const zone=document.getElementById('uploadZone'), card=document.getElementById('uploadCard');
+const filePill=document.getElementById('filePill'), donePill=document.getElementById('donePill'), resultMeta=document.getElementById('resultMeta');
+
+function startUpload(name){
+  const label=name||'高等数学·微积分.pdf';
+  filePill.textContent='📄 '+label;
+  resultMeta.textContent='《'+label.replace(/\.(pdf|pptx|docx|png|jpg|jpeg)/i,'')+'》 · 7 个知识点';
+  runSteps(()=>{
+    setTimeout(()=>{ setState('success'); document.getElementById('knowledge')?.scrollIntoView?.({behavior:'smooth'}); },200);
+  });
+}
+function startFail(){ setState('error'); }
+
+zone.addEventListener('click',()=>{ if(body.dataset.state==='empty') startUpload(); });
+zone.addEventListener('dragover',e=>{e.preventDefault();card.classList.add('hot');});
+zone.addEventListener('dragleave',()=>card.classList.remove('hot'));
+zone.addEventListener('drop',e=>{
+  e.preventDefault(); card.classList.remove('hot');
+  const f=e.dataTransfer.files[0];
+  const name=f?f.name:'';
+  const ok=/\.(pdf|png|jpe?g|pptx|docx)$/i.test(name);
+  if(ok) startUpload(name); else startFail();
+});
+document.getElementById('reupload').addEventListener('click',()=>{ setState('empty'); resetSteps(); });
+document.getElementById('retryUpload').addEventListener('click',()=>{ setState('empty'); resetSteps(); });
+document.getElementById('retryFromError').addEventListener('click',()=>{ setState('empty'); resetSteps(); });
+
+// tab 切换
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); t.classList.add('active');
+  const v=t.dataset.view;
+  cardsView.style.display = v==='cards'?'grid':'none';
+  outlineView.classList.toggle('show', v==='outline');
+}));
+
+// 状态预览按钮
+document.querySelectorAll('.state-dock .sbtn').forEach(b=>b.addEventListener('click',()=>{
+  const s=b.dataset.s;
+  if(s==='uploading'){ runSteps(()=>{setTimeout(()=>setState('success'),200);}); }
+  else if(s==='empty'){ resetSteps(); setState('empty'); }
+  else setState(s);
+}));
+</script>
+</body>
+</html>

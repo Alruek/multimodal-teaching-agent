@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知屿 ZhiYu · 交互式答疑</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<style>
+  :root{
+    --bg-0:#070B14; --bg-1:#0B1020; --bg-2:#121A30;
+    --primary:#6C5CE7; --primary-2:#8B7CF7; --cyan:#22D3EE; --accent:#00E5C3;
+    --pink:#FF6B9D; --violet:#A78BFA; --green:#34D399; --orange:#FFA94D; --red:#FF5470;
+    --text:#E8EAF6; --text-dim:#9AA3B8;
+    --glass:rgba(255,255,255,.04); --glass-border:rgba(255,255,255,.08);
+    --font-display:'Sora','HarmonyOS Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+    --font-body:'Inter','PingFang SC','Microsoft YaHei',sans-serif;
+    --font-mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:var(--font-body);color:var(--text);min-height:100vh;overflow-x:hidden;
+    background:radial-gradient(1000px 560px at 80% -10%,rgba(108,92,231,.18),transparent 60%),radial-gradient(800px 480px at 0% 20%,rgba(0,229,195,.10),transparent 55%),radial-gradient(700px 500px at 100% 100%,rgba(255,107,157,.08),transparent 55%),linear-gradient(180deg,var(--bg-0),var(--bg-1) 45%,var(--bg-2));
+    -webkit-font-smoothing:antialiased}
+  .grid-overlay{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.45;
+    background-image:linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px);background-size:44px 44px;mask-image:radial-gradient(ellipse at center,#000 30%,transparent 78%)}
+
+  .wrap{position:relative;z-index:2;max-width:860px;margin:0 auto;padding:24px 20px 40px}
+
+  /* ===== 对话面板 ===== */
+  .chat-panel{position:relative;border-radius:22px;background:rgba(11,16,32,.7);border:1px solid var(--glass-border);backdrop-filter:blur(22px);overflow:hidden;display:flex;flex-direction:column;height:calc(100vh - 90px);min-height:560px;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+  .chat-panel::before{content:"";position:absolute;inset:-1px;border-radius:22px;padding:1px;background:linear-gradient(140deg,rgba(139,124,247,.45),transparent 40%,rgba(0,229,195,.35));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.5;pointer-events:none}
+
+  /* 顶部 header：知识点 + 掌握度环 */
+  .chat-head{display:flex;align-items:center;gap:16px;padding:16px 20px;border-bottom:1px solid var(--glass-border);background:rgba(255,255,255,.02)}
+  .chat-head .k-info{flex:1;min-width:0}
+  .chat-head .k-name{font-family:var(--font-display);font-weight:700;font-size:17px;display:flex;align-items:center;gap:10px}
+  .chat-head .k-name .dot{width:11px;height:11px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan);flex-shrink:0}
+  .chat-head .k-sub{font-size:12px;color:var(--text-dim);margin-top:3px}
+  .mastery{display:flex;align-items:center;gap:12px;flex-shrink:0}
+  .mastery .ring{position:relative;width:58px;height:58px}
+  .mastery .ring svg{transform:rotate(-90deg)}
+  .mastery .ring .bg{fill:none;stroke:rgba(255,255,255,.08);stroke-width:6}
+  .mastery .ring .fg{fill:none;stroke:url(#mGrad);stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .8s cubic-bezier(.4,0,.2,1)}
+  .mastery .ring .pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:13px;font-weight:600}
+  .mastery .m-label{font-size:11px;color:var(--text-dim);line-height:1.5}
+  .mastery .m-label b{color:var(--accent);display:block;font-size:12px}
+
+  /* ===== 对话流 ===== */
+  .chat-body{flex:1;overflow-y:auto;padding:22px 20px;display:flex;flex-direction:column;gap:18px;scroll-behavior:smooth}
+  .chat-body::-webkit-scrollbar{width:8px}
+  .chat-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:8px}
+  .msg{display:flex;gap:10px;max-width:86%;animation:msgIn .35s ease}
+  @keyframes msgIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+  .msg.ai{align-self:flex-start}
+  .msg.stu{align-self:flex-end;flex-direction:row-reverse}
+  .avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;font-size:14px;font-weight:600}
+  .msg.ai .avatar{background:linear-gradient(135deg,var(--accent),var(--cyan));box-shadow:0 0 12px rgba(0,229,195,.4)}
+  .msg.stu .avatar{background:linear-gradient(135deg,var(--pink),var(--violet))}
+  .bubble{padding:12px 16px;border-radius:16px;font-size:14px;line-height:1.75;min-width:0}
+  .msg.ai .bubble{background:rgba(255,255,255,.06);border:1px solid var(--glass-border);border-top-left-radius:4px}
+  .msg.stu .bubble{background:linear-gradient(135deg,var(--primary),#5b4bc9);border-top-right-radius:4px}
+
+  /* markdown 样式 */
+  .bubble h3{font-size:15px;margin:4px 0 6px}
+  .bubble p{margin:0 0 6px}
+  .bubble p:last-child{margin-bottom:0}
+  .bubble ul,.bubble ol{margin:4px 0 8px;padding-left:20px}
+  .bubble li{margin:3px 0}
+  .bubble code{font-family:var(--font-mono);font-size:12.5px;background:rgba(255,255,255,.1);padding:1px 6px;border-radius:5px;color:var(--accent)}
+  .bubble pre{background:rgba(0,0,0,.35);border:1px solid var(--glass-border);border-radius:10px;padding:12px 14px;overflow-x:auto;margin:8px 0;font-family:var(--font-mono);font-size:12.5px;line-height:1.6}
+  .bubble pre code{background:none;padding:0;color:var(--text)}
+  .bubble blockquote{border-left:3px solid var(--accent);padding:4px 12px;margin:8px 0;color:var(--text-dim);background:rgba(0,229,195,.05);border-radius:6px}
+  .bubble .formula{font-family:Georgia,'Times New Roman',serif;font-style:italic;color:#c4b5fd;background:rgba(139,124,247,.12);padding:1px 6px;border-radius:5px}
+  .bubble .katex{font-size:1.05em}
+  .bubble .katex-display{margin:10px 0}
+  .cursor{display:inline-block;width:2px;height:14px;background:var(--accent);vertical-align:-2px;animation:blink 1s steps(2) infinite;margin-left:2px}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+  /* 快捷操作条 */
+  .quick{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .quick .qbtn{font-size:12.5px;color:var(--accent);background:rgba(0,229,195,.08);border:1px solid rgba(0,229,195,.3);padding:7px 14px;border-radius:100px;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:6px}
+  .quick .qbtn:hover{background:rgba(0,229,195,.16);transform:translateY(-1px)}
+  .quick .qbtn:disabled{opacity:.4;cursor:default;transform:none}
+
+  /* 出题卡片 */
+  .quiz{margin-top:12px;border:1px solid var(--glass-border);border-radius:14px;padding:16px;background:rgba(0,0,0,.18)}
+  .quiz .qz-tag{font-size:11px;color:var(--orange);letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .quiz .qz-q{font-size:14px;font-weight:600;line-height:1.7;margin-bottom:12px}
+  .quiz .qz-opts{display:flex;flex-direction:column;gap:8px}
+  .quiz .opt{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,.03);cursor:pointer;transition:.18s;font-size:13.5px}
+  .quiz .opt:hover:not(:disabled){border-color:rgba(34,211,238,.5);background:rgba(34,211,238,.06)}
+  .quiz .opt .tag{width:22px;height:22px;border-radius:50%;border:1px solid var(--glass-border);display:grid;place-items:center;font-family:var(--font-mono);font-size:11px;flex-shrink:0}
+  .quiz .opt.correct{border-color:rgba(52,211,153,.6);background:rgba(52,211,153,.12)}
+  .quiz .opt.correct .tag{background:var(--green);border-color:var(--green);color:#04211b}
+  .quiz .opt.wrong{border-color:rgba(255,84,112,.6);background:rgba(255,84,112,.12)}
+  .quiz .opt.wrong .tag{background:var(--red);border-color:var(--red);color:#fff}
+  .quiz .blank-row{display:flex;gap:8px;margin-top:4px}
+  .quiz .blank-row input{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--glass-border);border-radius:10px;padding:11px 14px;color:var(--text);font-size:14px;font-family:var(--font-mono);outline:none}
+  .quiz .blank-row input:focus{border-color:rgba(0,229,195,.5)}
+  .quiz .blank-row button{background:linear-gradient(135deg,var(--accent),var(--cyan));border:none;color:#04211b;font-weight:600;padding:0 18px;border-radius:10px;cursor:pointer;font-family:var(--font-display);font-size:13px}
+  .quiz .feedback{margin-top:12px;padding:11px 14px;border-radius:10px;font-size:13px;line-height:1.7;display:none}
+  .quiz .feedback.show{display:block}
+  .quiz .feedback.ok{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.35);color:var(--green)}
+  .quiz .feedback.no{background:rgba(255,84,112,.1);border:1px solid rgba(255,84,112,.35);color:var(--red)}
+  .quiz .feedback b{display:block;margin-bottom:4px}
+
+  /* ===== 输入栏 ===== */
+  .chat-input{display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid var(--glass-border);background:rgba(255,255,255,.02)}
+  .mic-btn{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--glass-border);color:var(--text-dim);cursor:pointer;display:grid;place-items:center;transition:.2s;flex-shrink:0}
+  .mic-btn:hover{color:var(--text);background:rgba(255,255,255,.1)}
+  .mic-btn.rec{color:#fff;background:var(--red);border-color:var(--red);box-shadow:0 0 20px rgba(255,84,112,.5);animation:pulseRec 1.2s infinite}
+  @keyframes pulseRec{0%,100%{box-shadow:0 0 8px rgba(255,84,112,.4)}50%{box-shadow:0 0 24px rgba(255,84,112,.8)}}
+  .chat-input textarea{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--glass-border);border-radius:12px;padding:12px 16px;color:var(--text);font-size:14px;font-family:var(--font-body);outline:none;resize:none;max-height:100px;min-height:44px;line-height:1.5}
+  .chat-input textarea:focus{border-color:rgba(0,229,195,.5);background:rgba(0,229,195,.04)}
+  .send-btn{background:linear-gradient(135deg,var(--accent),var(--cyan));border:none;color:#04211b;font-weight:700;font-size:14px;padding:0 22px;height:44px;border-radius:12px;cursor:pointer;font-family:var(--font-display);transition:.2s;box-shadow:0 4px 20px rgba(0,229,195,.35);flex-shrink:0}
+  .send-btn:hover{transform:translateY(-1px)}
+
+  /* ===== 完成动效：confetti + toast ===== */
+  .toast{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.9);z-index:100;padding:28px 36px;border-radius:20px;background:linear-gradient(135deg,#0d1326,#141a33);border:1px solid rgba(0,229,195,.5);box-shadow:0 30px 90px rgba(0,0,0,.6),0 0 40px rgba(0,229,195,.25);text-align:center;opacity:0;pointer-events:none;transition:.35s cubic-bezier(.34,1.56,.64,1)}
+  .toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  .toast .t-emoji{font-size:44px;margin-bottom:10px}
+  .toast .t-title{font-family:var(--font-display);font-size:22px;font-weight:800;margin-bottom:8px}
+  .toast .t-title .grad{background:linear-gradient(120deg,var(--accent),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .toast .t-sub{font-size:13px;color:var(--text-dim);line-height:1.7}
+  .confetti{position:fixed;top:-20px;z-index:99;width:10px;height:16px;pointer-events:none;border-radius:2px;animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:0}}
+
+  footer{margin-top:20px;text-align:center;color:var(--text-dim);font-size:12px;letter-spacing:.5px}
+  @media(max-width:640px){
+    .msg{max-width:94%}
+    .mastery .m-label{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="grid-overlay"></div>
+
+<div class="wrap">
+  <div class="chat-panel">
+    <!-- 顶部：知识点 + 掌握度环 -->
+    <div class="chat-head">
+      <div class="k-info">
+        <div class="k-name"><span class="dot"></span>导数与微分</div>
+        <div class="k-sub">从「知识星空图」点开的答疑 · 你的 AI 助教</div>
+      </div>
+      <div class="mastery">
+        <div class="ring">
+          <svg width="58" height="58">
+            <defs><linearGradient id="mGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00E5C3"/><stop offset="100%" stop-color="#22D3EE"/></linearGradient></defs>
+            <circle class="bg" cx="29" cy="29" r="24"/>
+            <circle class="fg" id="mFg" cx="29" cy="29" r="24" stroke-dasharray="150.8" stroke-dashoffset="150.8"/>
+          </svg>
+          <div class="pct" id="mPct">0%</div>
+        </div>
+        <div class="m-label"><b>知识吸收度</b>答对题目会增长</div>
+      </div>
+    </div>
+
+    <!-- 对话流 -->
+    <div class="chat-body" id="chatBody"></div>
+
+    <!-- 输入栏 -->
+    <div class="chat-input">
+      <button class="mic-btn" id="micBtn" title="语音输入">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><path d="M12 18v4"/></svg>
+      </button>
+      <textarea id="input" placeholder="向 AI 助教提问，或点下方快捷按钮…" rows="1"></textarea>
+      <button class="send-btn" id="sendBtn">发送</button>
+    </div>
+  </div>
+  <footer>知屿 ZhiYu · 交互式答疑 · 视觉概念 Demo</footer>
+</div>
+
+<div class="toast" id="toast">
+  <div class="t-emoji">🎉</div>
+  <div class="t-title">知识点 <span class="grad">完全掌握！</span></div>
+  <div class="t-sub">太棒了，你已吃透「导数与微分」<br>可以去点亮下一颗星球了 ✦</div>
+</div>
+
+<script>
+/* ============================================================
+   与后端/智能体的交互约定（真实对接时替换 mock）
+
+   1) 发消息（POST /api/chat）：
+      { session_id, knowledge_id, message, action? }
+      action 可选：'check_understood' | 'quiz' | 're_explain' | 'elaborate'
+
+   2) 流式接收（SSE 或 fetch ReadableStream）：
+      const res = await fetch('/api/chat', { method:'POST', body: JSON.stringify(payload) });
+      const reader = res.body.getReader();
+      while(1){ const {done,value} = await reader.read(); if(done) break;
+        appendDelta(new TextDecoder().decode(value)); }
+      事件协议（SSE）：data: {"type":"delta","content":"..."}
+                       data: {"type":"question","question":{...}}
+                       data: {"type":"done"}
+   ============================================================ */
+
+const chatBody = document.getElementById('chatBody');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('sendBtn');
+const micBtn = document.getElementById('micBtn');
+const mFg = document.getElementById('mFg');
+const mPct = document.getElementById('mPct');
+const toast = document.getElementById('toast');
+
+let mastery = 0;
+let quizIndex = 0;
+let quizAnswered = false;   // 防止重复作答
+let streaming = false;
+
+/* ===== Markdown 渲染（自研，支持 粗体/列表/代码块/公式）===== */
+function renderInline(s){
+  s = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // 公式 $$..$$ 先提取
+  s = s.replace(/\$\$([\s\S]+?)\$\$/g, (m, f) => renderFormula(f, true));
+  // 行内 $..$
+  s = s.replace(/\$([^\$]+?)\$/g, (m, f) => renderFormula(f, false));
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+  s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+  return s;
+}
+function renderFormula(tex, block){
+  if (window.katex) {
+    try { return katex.renderToString(tex, { displayMode: block, throwOnError: false }); }
+    catch(e){ return '<span class="formula">' + tex + '</span>'; }
+  }
+  return block ? '<div class="formula">' + tex + '</div>' : '<span class="formula">' + tex + '</span>';
+}
+function renderMD(text){
+  // 保护代码块
+  const codeBlocks = [];
+  text = text.replace(/```([\s\S]+?)```/g, (m, c) => {
+    codeBlocks.push(c.trim());
+    return '\u0000CODE' + (codeBlocks.length-1) + '\u0000';
+  });
+  const lines = text.split('\n');
+  let html = '', list = null, ol = false;
+  const closeList = () => { if(list){ html += '</' + list + '>'; list = null; } };
+  for (let raw of lines){
+    const line = raw.replace(/\r/g,'');
+    if(/^\u0000CODE/.test(line)){
+      closeList();
+      const i = line.match(/\d+/)[0];
+      html += '<pre><code>' + codeBlocks[i].replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</code></pre>';
+      continue;
+    }
+    const mh = line.match(/^###?\s+(.*)/);
+    const mq = line.match(/^>\s?(.*)/);
+    const mul = line.match(/^\s*[-*]\s+(.*)/);
+    const mol = line.match(/^\s*\d+\.\s+(.*)/);
+    if(mh){ closeList(); html += '<h3>' + renderInline(mh[1]) + '</h3>'; continue; }
+    if(mq){ closeList(); html += '<blockquote>' + renderInline(mq[1]) + '</blockquote>'; continue; }
+    if(mul){ if(list!=='ul'){ closeList(); html+='<ul>'; list='ul'; } html += '<li>'+renderInline(mul[1])+'</li>'; continue; }
+    if(mol){ if(list!=='ol'){ closeList(); html+='<ol>'; list='ol'; } html += '<li>'+renderInline(mol[1])+'</li>'; continue; }
+    closeList();
+    if(line.trim()==='') continue;
+    html += '<p>' + renderInline(line) + '</p>';
+  }
+  closeList();
+  return html;
+}
+
+/* ===== 添加消息 ===== */
+function addMsg(role, html, opts={}){
+  const m = document.createElement('div');
+  m.className = 'msg ' + role;
+  const av = role==='ai' ? '师' : '我';
+  m.innerHTML = '<div class="avatar">'+av+'</div><div class="bubble">'+html+'</div>';
+  chatBody.appendChild(m);
+  if(opts.quick){
+    const q = document.createElement('div');
+    q.className='quick';
+    const acts = [['✓ 理解了吗？','understood'],['📝 再出 1 个题','quiz'],['🔁 换个讲法','re_explain'],['🔍 追问细化','elaborate']];
+    acts.forEach(([label,action])=>{
+      const b=document.createElement('button'); b.className='qbtn'; b.textContent=label;
+      b.addEventListener('click',()=>{ disableQuicks(q); handleAction(action); });
+      q.appendChild(b);
+    });
+    m.querySelector('.bubble').appendChild(q);
+  }
+  if(opts.quiz){ m.querySelector('.bubble').appendChild(buildQuiz(opts.quiz)); }
+  scrollBottom();
+  return m;
+}
+function disableQuicks(q){ q.querySelectorAll('.qbtn').forEach(b=>b.disabled=true); }
+function scrollBottom(){ chatBody.scrollTop = chatBody.scrollHeight; }
+
+/* ===== 流式 AI 回复（mock 打字机；真实对接改 fetch stream）===== */
+async function aiReply(mdText, opts={}){
+  streaming = true;
+  const m = addMsg('ai', '<span class="cursor"></span>');
+  const bubble = m.querySelector('.bubble');
+  let acc = '';
+  const chars = mdText.split('');
+  // 模拟流式：分块喂入（真实场景是后端逐 token 下发）
+  for (let i=0; i<chars.length; i++){
+    acc += chars[i];
+    bubble.innerHTML = renderMD(acc) + '<span class="cursor"></span>';
+    scrollBottom();
+    if (i % 3 === 0) await new Promise(r=>setTimeout(r, 8));
+  }
+  bubble.innerHTML = renderMD(mdText);
+  streaming = false;
+  if (opts.quick){ appendQuicks(m); }
+  if (opts.quiz){ bubble.appendChild(buildQuiz(opts.quiz)); }
+  scrollBottom();
+  return m;
+}
+function appendQuicks(m){
+  const q=document.createElement('div'); q.className='quick';
+  const acts=[['✓ 理解了吗？','understood'],['📝 再出 1 个题','quiz'],['🔁 换个讲法','re_explain'],['🔍 追问细化','elaborate']];
+  acts.forEach(([label,action])=>{ const b=document.createElement('button'); b.className='qbtn'; b.textContent=label;
+    b.addEventListener('click',()=>{ disableQuicks(q); handleAction(action); }); q.appendChild(b); });
+  m.querySelector('.bubble').appendChild(q);
+}
+
+/* ===== 题库 ===== */
+const bank = [
+  { type:'choice', q:'函数 $y = x^2$ 在 $x = 3$ 处的导数为？', opts:['3','6','9','$2x$'], ans:1,
+    explain:'$y\' = 2x$，代入 $x=3$ 得 $2 \\times 3 = 6$。' },
+  { type:'choice', q:'常数函数 $f(x)=7$ 的导数是？', opts:['7','$7x$','0','1'], ans:2,
+    explain:'常数的导数为 0，图像是水平线，斜率恒为 0。' },
+  { type:'blank', q:'$y = x^3$ 的导数为 $y\' = $ ______', ans:'3x^2',
+    explain:'幂函数求导 $\\frac{d}{dx}x^n = nx^{n-1}$，故 $3x^{3-1}=3x^2$。' },
+  { type:'choice', q:'$y = \\sin x$ 的导数为？', opts:['$\\cos x$','$-\\cos x$','$\\sin x$','$-\\sin x$'], ans:0,
+    explain:'$\\frac{d}{dx}\\sin x = \\cos x$，基本求导公式。' },
+  { type:'blank', q:'$y = e^{2x}$ 的导数是 $y\' = $ ______', ans:'2e^{2x}',
+    explain:'链式法则：外导 $e^{2x}$ 乘内导 $2$，得 $2e^{2x}$。' },
+  { type:'choice', q:'$y = \\ln x$ 的导数是？', opts:['$x$','$\\frac{1}{x}$','$\\ln x$','$e^x$'], ans:1,
+    explain:'$\\frac{d}{dx}\\ln x = \\frac{1}{x}$。' }
+];
+
+/* ===== 出题卡片 ===== */
+function buildQuiz(item){
+  quizAnswered = false;
+  const el = document.createElement('div'); el.className='quiz';
+  el.innerHTML = '<div class="qz-tag">⚡ 随堂测验 · ' + (item.type==='choice'?'选择题':'填空题') + '</div><div class="qz-q">' + renderMD(item.q) + '</div>';
+  if(item.type==='choice'){
+    const opts = document.createElement('div'); opts.className='qz-opts';
+    const letters = ['A','B','C','D'];
+    item.opts.forEach((o,i)=>{
+      const b=document.createElement('div'); b.className='opt';
+      b.innerHTML = '<span class="tag">'+letters[i]+'</span><span>'+renderInline(o)+'</span>';
+      b.addEventListener('click',()=> judge(el, item, i));
+      opts.appendChild(b);
+    });
+    el.appendChild(opts);
+  } else {
+    const row=document.createElement('div'); row.className='blank-row';
+    row.innerHTML = '<input type="text" placeholder="输入答案，如 3x^2" /><button>提交</button>';
+    const inp=row.querySelector('input'), btn=row.querySelector('button');
+    const submit=()=> judge(el, item, inp.value.trim());
+    btn.addEventListener('click',submit);
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter') submit(); });
+    el.appendChild(row);
+  }
+  el.appendChild(Object.assign(document.createElement('div'),{className:'feedback'}));
+  return el;
+}
+function judge(el, item, answer){
+  if(quizAnswered) return;
+  let correct;
+  if(item.type==='choice'){ correct = answer === item.ans; }
+  else { correct = answer.toLowerCase().replace(/\s/g,'') === item.ans.toLowerCase().replace(/\s/g,''); }
+  quizAnswered = true;
+  const fb = el.querySelector('.feedback');
+  if(item.type==='choice'){
+    el.querySelectorAll('.opt').forEach((o,i)=>{
+      o.style.pointerEvents='none';
+      if(i===item.ans) o.classList.add('correct');
+      else if(i===answer) o.classList.add('wrong');
+    });
+  } else {
+    el.querySelector('.blank-row input').disabled = true;
+    el.querySelector('.blank-row button').disabled = true;
+  }
+  if(correct){
+    fb.className='feedback show ok';
+    fb.innerHTML = '<b>✓ 回答正确！</b>' + renderMD(item.explain);
+    bumpMastery(25);
+  } else {
+    fb.className='feedback show no';
+    fb.innerHTML = '<b>✗ 再想想</b>' + renderMD(item.explain);
+    bumpMastery(5);
+  }
+}
+
+/* ===== 掌握度环 ===== */
+const CIRC = 150.8;
+function bumpMastery(delta){
+  mastery = Math.min(100, mastery + delta);
+  mFg.style.strokeDashoffset = CIRC - CIRC * mastery / 100;
+  mPct.textContent = mastery + '%';
+  if(mastery >= 100){ celebrate(); }
+}
+function celebrate(){
+  setTimeout(()=>{
+    toast.classList.add('show');
+    for(let i=0;i<40;i++) spawnConfetti();
+    setTimeout(()=>toast.classList.remove('show'), 3200);
+  }, 400);
+}
+function spawnConfetti(){
+  const c=document.createElement('div'); c.className='confetti';
+  const colors=['#00E5C3','#22D3EE','#FF6B9D','#A78BFA','#FFA94D','#34D399'];
+  c.style.left = Math.random()*100 + 'vw';
+  c.style.background = colors[Math.floor(Math.random()*colors.length)];
+  c.style.animationDuration = (2+Math.random()*2)+'s';
+  c.style.transform = 'rotate('+Math.random()*360+'deg)';
+  document.body.appendChild(c);
+  setTimeout(()=>c.remove(), 4000);
+}
+
+/* ===== 快捷操作 ===== */
+const explainAgain = [
+  '换个方式理解导数：把它想成**车速表** 🚗\n\n- 你开车，位置随时间变化，就是函数 $s(t)$\n- 某一瞬间车速表显示的数值，就是**该时刻的导数** $s\'(t)$\n\n所以"求导"就是问：**此刻变化有多快？**\n\n这样是不是直观多了？😄',
+  '再打个比方：导数像**照片的"瞬时温度计"** 🌡️\n\n它不关心你过去走了多远，只关心**此刻**函数曲线的陡峭程度。\n\n曲线越陡 → 导数值越大 → 变化越快。'
+];
+let explainIdx = 0;
+function handleAction(action){
+  if(streaming) return;
+  addMsg('stu', '');
+  const stuBubble = chatBody.lastChild.querySelector('.bubble');
+  const labels = { understood:'理解了吗？', quiz:'再出 1 个题', re_explain:'换个讲法', elaborate:'追问细化' };
+  stuBubble.textContent = labels[action];
+  setTimeout(()=>{
+    if(action==='quiz'){
+      const item = bank[quizIndex % bank.length]; quizIndex++;
+      aiReply('来，练一道 👇', { quick:false }).then(m=>{
+        m.querySelector('.bubble').appendChild(buildQuiz(item));
+        scrollBottom();
+      });
+    } else if(action==='understood'){
+      aiReply('很好！如果感觉掌握了，我出个小练习测测你，看看吸收得怎么样 👇', { quick:true }).then(m=>{
+        const item = bank[quizIndex % bank.length]; quizIndex++;
+        m.querySelector('.bubble').appendChild(buildQuiz(item)); scrollBottom();
+      });
+    } else if(action==='re_explain'){
+      aiReply(explainAgain[explainIdx % explainAgain.length], { quick:true }); explainIdx++;
+    } else if(action==='elaborate'){
+      aiReply('来细化一下**链式法则**，它是复合函数求导的关键：\n\n若 $y = f(g(x))$，则\n\n$$ y\' = f\'(g(x)) \\cdot g\'(x) $$\n\n记忆口诀：**"由外向内，层层相乘"**。\n\n例：$y = (3x+1)^5$\n1. 外层 $u^5$ 求导 → $5u^4$\n2. 内层 $3x+1$ 求导 → $3$\n3. 相乘：$y\' = 5(3x+1)^4 \\cdot 3 = 15(3x+1)^4$', { quick:true });
+    }
+  }, 300);
+}
+
+/* ===== 手动输入 ===== */
+function sendManual(){
+  const text = input.value.trim();
+  if(!text || streaming) return;
+  addMsg('stu', renderInline(text));
+  input.value=''; autoGrow();
+  setTimeout(()=>{
+    if(/导|斜率|微分|求导/.test(text)){
+      aiReply('好问题！针对**导数**，核心是：\n\n导数衡量函数在某点的**瞬时变化率**，几何上就是该点**切线的斜率**。\n\n基本公式：$\\frac{d}{dx}x^n = nx^{n-1}$\n\n比如 $y=x^2$ 求导得 $y\'=2x$，这就是一条"斜率函数"。\n\n需要我再出个题帮你巩固吗？👇', { quick:true });
+    } else {
+      aiReply('我记下这个问题了。针对「导数与微分」这个知识点，我先帮你梳理一下思路：\n\n> 导数是**变化率**的语言，微分是**局部线性近似**的工具。\n\n- 导数 $f\'(x)$：变化快慢\n- 微分 $dy = f\'(x)dx$：微小增量\n\n想让我**换个讲法**、还是**出题自测**？👇', { quick:true });
+    }
+  }, 400);
+}
+sendBtn.addEventListener('click', sendManual);
+input.addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendManual(); } });
+function autoGrow(){ input.style.height='auto'; input.style.height=Math.min(input.scrollHeight,100)+'px'; }
+input.addEventListener('input', autoGrow);
+
+/* ===== 语音输入（Web Speech API，可选）===== */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, recording = false;
+micBtn.addEventListener('click', ()=>{
+  if(!SR){ alert('当前浏览器不支持语音输入，请用 Chrome/Edge 尝试'); return; }
+  if(recording){ rec.stop(); return; }
+  rec = new SR(); rec.lang='zh-CN'; rec.interimResults=false;
+  recording=true; micBtn.classList.add('rec');
+  rec.onresult = e => { input.value = e.results[0][0].transcript; autoGrow(); };
+  rec.onend = () => { recording=false; micBtn.classList.remove('rec'); };
+  rec.onerror = () => { recording=false; micBtn.classList.remove('rec'); };
+  rec.start();
+});
+
+/* ===== 初始开场 ===== */
+aiReply('你好！我们一起来攻克 **导数与微分** 这个知识点 👋\n\n导数的本质，是函数在某一点的**瞬时变化率**——也就是函数图像在该点切线的斜率。\n\n最经典的定义：\n$$ f\'(x) = \\lim_{\\Delta x \\to 0} \\frac{f(x+\\Delta x)-f(x)}{\\Delta x} $$\n\n要掌握它，记住三个要点：\n\n1. **几何意义**：导数 = 切线斜率\n2. **基本公式**：$\\frac{d}{dx}x^n = nx^{n-1}$\n3. **运算法则**：链式法则、乘积法则\n\n哪里不清楚尽管问，或点下面的按钮 👇', { quick:true });
+</script>
+</body>
+</html>
