@@ -30,6 +30,26 @@ from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+# --------------------------- 加载 .env ---------------------------
+# 本地开发时从 .env 读取密钥；平台环境变量优先级更高（不覆盖已存在的值）。
+# .env 已被 .gitignore 忽略，绝不提交到代码仓库。
+def _load_dotenv() -> None:
+    env_file = Path(__file__).resolve().parent / ".env"
+    if not env_file.exists():
+        return
+    for line in env_file.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+_load_dotenv()
+
 # --------------------------- 配置 ---------------------------
 # 从环境变量读取密钥，绝不在代码中写死
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
@@ -93,7 +113,8 @@ class ChatRequest(BaseModel):
 
 class AnalyzeRequest(BaseModel):
     image_base64: Optional[str] = Field(None, description="图片的 base64 编码（可选）")
-    pdf_text: Optional[str] = Field(None, description="PDF 已提取出的纯文本（可选）")
+    pdf_base64: Optional[str] = Field(None, description="PDF 文件的 base64 编码（可选）")
+    pdf_text: Optional[str] = Field(None, description="已提取出的纯文本（可选，txt/md 或已解析的 PDF）")
 
 
 # --------------------------- 工具函数 ---------------------------
@@ -182,20 +203,79 @@ async def call_deepseek(messages: List[Dict[str, str]], temperature: float = 0.5
         raise HTTPException(status_code=502, detail="DeepSeek 返回格式异常，缺少 choices。")
 
 
-def ocr_extract(image_base64: str) -> Optional[str]:
-    """OCR 文字提取（占位实现）。
-
-    真实项目可在此接入：
-        - 云服务：腾讯云 OCR / 百度 OCR / 阿里云 OCR
-        - 本地：PaddleOCR
-    当前仅校验 base64 合法性，并返回 None 表示「OCR 待接入」。
-    """
+def extract_pdf_text(pdf_base64: str) -> str:
+    """用 PyMuPDF 从 PDF base64 提取文字。"""
+    # 先校验 base64 合法性
     try:
-        base64.b64decode(image_base64, validate=True)
+        pdf_bytes = base64.b64decode(pdf_base64, validate=True)
+    except Exception:
+        raise HTTPException(status_code=400, detail="pdf_base64 不是合法的 base64 编码。")
+    # 再检查 PDF 解析库
+    try:
+        import pymupdf as fitz  # PyMuPDF（新版推荐）
+    except ImportError:
+        try:
+            import fitz  # 旧版兼容
+        except ImportError:
+            raise HTTPException(status_code=503, detail="未安装 PDF 解析库 PyMuPDF，请 pip install pymupdf。")
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        text = "\n".join(page.get_text() for page in doc)
+        doc.close()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"PDF 解析失败：{e}")
+    if not text.strip():
+        raise HTTPException(status_code=422, detail="PDF 未提取到文字（可能是扫描版 PDF，请先 OCR 或换文本型 PDF）。")
+    return text
+
+
+def ocr_extract(image_base64: str) -> Optional[str]:
+    """OCR 文字提取。
+
+    优先使用本地离线 OCR（RapidOCR，onnxruntime 版）：
+      - 无需云账号 / API Key，评审点击即用，不依赖外网第三方 OCR 服务；
+      - 中文识别效果好，适合课件 / 讲义 / 扫描件。
+    若客户端未安装 RapidOCR 依赖，则返回 None（前端提示「OCR 待接入」，不报错）。
+    """
+    # 校验 base64 合法性
+    try:
+        image_bytes = base64.b64decode(image_base64, validate=True)
     except Exception:
         raise HTTPException(status_code=400, detail="image_base64 不是合法的 base64 编码。")
-    # TODO: 接入真实 OCR 后，把识别出的文字 return 出来
-    return None
+
+    # 本地离线 OCR：RapidOCR（onnxruntime）
+    try:
+        import numpy as np
+        import cv2
+        from rapidocr_onnxruntime import RapidOCR
+
+        img_array = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+        if img is None:
+            raise HTTPException(
+                status_code=422, detail="无法解码图片，请上传有效的 JPG/PNG 图片。"
+            )
+
+        engine = RapidOCR()
+        result, _ = engine(img)
+
+        if not result:
+            # 图中没有识别到文字：返回空字符串（区别于「待接入」的 None）
+            return ""
+
+        # result 结构：[ [box, text, score], ... ]，取每个元素的 text（第 2 项）
+        lines = [item[1] for item in result]
+        return "\n".join(lines)
+
+    except ImportError:
+        # 客户端未安装 RapidOCR 相关依赖
+        logger.warning("未安装 RapidOCR，OCR 待接入。请执行 pip install rapidocr-onnxruntime opencv-python-headless numpy")
+        return None
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("OCR 识别失败：%s", e)
+        raise HTTPException(status_code=502, detail=f"OCR 识别失败：{e}")
 
 
 def _ensure_list(v: Any) -> List[Any]:
@@ -204,32 +284,30 @@ def _ensure_list(v: Any) -> List[Any]:
 
 
 # --------------------------- 提示词 ---------------------------
-SYSTEM_PROMPT = """你是一位专业的教育知识结构化专家。你的任务是从给定的教学材料中，抽取结构化的知识点图谱。
+SYSTEM_PROMPT = """你是一位专业的教育知识结构化专家。你的任务是从给定的教学材料中，抽取结构化的知识点信息。
 
 输出必须是严格的 JSON 对象（不要输出 markdown 代码块、不要任何解释文字），格式如下：
 {
-  "subject": "材料主题（例如：高等数学 · 微积分）",
-  "nodes": [
+  "material_type": "材料类型（如：课件 / 讲义 / 教材 / 论文 / 图片，无法判断时用「未分类」）",
+  "summary": "对整份材料的一句话概述",
+  "knowledge_points": [
     {
-      "id": "英文小写唯一标识（例如 derivative）",
       "name": "知识点名称",
-      "difficulty": "easy | medium | hard",
-      "importance": 0.0 到 1.0 之间的小数（越重要数值越大）,
-      "summary": "一句话概述",
-      "points": ["核心要点1", "核心要点2"],
-      "example": "一个简短例证"
+      "level": "基础 | 进阶 | 高级",
+      "key_idea": "该知识点的核心思想（一句话）",
+      "prerequisite": "前置知识点名称，没有则为空字符串",
+      "example": "一个简短例证，没有则为空字符串"
     }
   ],
-  "edges": [
-    {"source": "前置知识点 id", "target": "后置知识点 id", "relation": "先修"}
-  ],
-  "learning_path": ["按由易到难递进顺序排列的节点 id 列表"]
+  "relations": [
+    {"from": "前置知识点名称", "to": "后置知识点名称", "type": "先修"}
+  ]
 }
 
 要求：
-1. 知识点数量控制在 5 ~ 15 个。
-2. edges 表达知识点之间的「先修 / 依赖」关系。
-3. learning_path 必须是一条从入门到进阶的递进路径。
+1. knowledge_points 控制在 5 ~ 15 个，按由易到难顺序排列。
+2. level 只能取「基础」「进阶」「高级」三者之一。
+3. relations 表达知识点之间的先修/依赖关系，from 与 to 必须是 knowledge_points 里出现过的 name。
 4. 只输出 JSON，不要有任何多余内容。"""
 
 
@@ -284,7 +362,9 @@ async def analyze(req: AnalyzeRequest):
     # 1) 提取文字
     text: Optional[str] = None
     if req.pdf_text and req.pdf_text.strip():
-        text = req.pdf_text.strip()  # PDF 已带文字，直接使用
+        text = req.pdf_text.strip()  # 已带文字，直接使用
+    elif req.pdf_base64:
+        text = extract_pdf_text(req.pdf_base64)  # PDF 走 pymupdf 提取文字
     elif req.image_base64:
         text = ocr_extract(req.image_base64)  # 图片走 OCR
         if text is None:
@@ -292,13 +372,13 @@ async def analyze(req: AnalyzeRequest):
             return {
                 "ocr_status": "pending",
                 "message": "OCR 待接入",
-                "subject": "",
-                "nodes": [],
-                "edges": [],
-                "learning_path": [],
+                "material_type": "",
+                "summary": "",
+                "knowledge_points": [],
+                "relations": [],
             }
     else:
-        raise HTTPException(status_code=400, detail="请提供 image_base64 或 pdf_text 之一。")
+        raise HTTPException(status_code=400, detail="请提供 image_base64、pdf_base64 或 pdf_text 之一。")
 
     # 2) 调用 DeepSeek 做知识点结构化抽取
     messages = [
@@ -317,19 +397,19 @@ async def analyze(req: AnalyzeRequest):
             "parse_error": True,
             "message": "知识点抽取完成，但模型返回无法解析为 JSON。",
             "raw": raw,
-            "subject": "",
-            "nodes": [],
-            "edges": [],
-            "learning_path": [],
+            "material_type": "",
+            "summary": "",
+            "knowledge_points": [],
+            "relations": [],
         }
 
-    # 4) 规范化返回，字段与前端 knowledge_points 对齐
+    # 4) 规范化返回，字段按约定输出
     return {
         "ocr_status": "ok",
-        "subject": data.get("subject", ""),
-        "nodes": _ensure_list(data.get("nodes")),
-        "edges": _ensure_list(data.get("edges")),
-        "learning_path": _ensure_list(data.get("learning_path")),
+        "material_type": data.get("material_type", ""),
+        "summary": data.get("summary", ""),
+        "knowledge_points": _ensure_list(data.get("knowledge_points")),
+        "relations": _ensure_list(data.get("relations")),
     }
 
 

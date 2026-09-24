@@ -504,15 +504,10 @@
 const DIFF = { easy:{color:'#34D399',label:'易'}, medium:{color:'#FFA94D',label:'中'}, hard:{color:'#FF5470',label:'难'} };
 
 /* ================= 后端服务 ================= */
-// 前端只调用后端地址，绝不出现 DeepSeek API Key（Key 仅存在于后端环境变量中）。
-// 本地默认 http://localhost:8000；部署线上时可用 URL 参数 ?api=https://你的后端域名 覆盖，或直接改这里。
-// 后端地址解析：?api= 参数 > 本地开发(localhost:8000) > 线上同源(空=相对路径)
-const API_BASE = (function(){
-  const p = new URLSearchParams(location.search).get('api');
-  if(p) return p;
-  if(location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1') return 'http://localhost:8000';
-  return '';  // 线上前后端同源部署，API 走当前域名
-})();
+// 前端只调用「同源后端」的相对地址（/api/chat、/api/analyze），绝不出现 DeepSeek API Key。
+// 默认走相对路径（前后端同源部署，前端页面由后端一并服务）。
+// 若前后端分离部署，可用 URL 参数 ?api=https://后端域名 覆盖。
+const API_BASE = (new URLSearchParams(location.search).get('api')) || '';
 
 // 统一请求封装：POST JSON → 解析 JSON，出错抛中文友好提示
 async function apiPost(path, body){
@@ -524,7 +519,7 @@ async function apiPost(path, body){
       body: JSON.stringify(body),
     });
   } catch (e) {
-    throw new Error('无法连接后端服务 ' + API_BASE + '，请确认后端已启动（uvicorn app:app --port 8000）。');
+    throw new Error('无法连接后端服务（' + (API_BASE || '同源地址') + '），请确认后端已启动。');
   }
   const data = await res.json().catch(() => ({ detail: '后端返回了非 JSON 内容' }));
   if (!res.ok) {
@@ -534,6 +529,41 @@ async function apiPost(path, body){
 }
 // HTML 转义，防止后端返回内容注入脚本
 function escapeHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// 把后端 /api/analyze 返回的新结构（material_type/summary/knowledge_points/relations）
+// 适配成前端卡片/星空图需要的 nodes/edges/learning_path 结构
+function adaptKnowledge(data){
+  const kps = (data && data.knowledge_points) || [];
+  const levelMap = { '基础':'easy', '入门':'easy', '进阶':'medium', '高级':'hard', '挑战':'hard' };
+  const nodes = kps.map((kp, i) => {
+    const level = levelMap[String(kp.level||'').trim()] || 'medium';
+    return {
+      id: 'kp' + i,
+      name: kp.name || ('知识点' + (i+1)),
+      difficulty: level,
+      importance: Math.max(0.45, 0.92 - i * 0.05),
+      summary: kp.key_idea || '',
+      points: kp.key_idea ? [kp.key_idea] : [],
+      example: kp.example || '',
+      prereq: kp.prerequisite || '',
+    };
+  });
+  const nameToId = {};
+  nodes.forEach(n => nameToId[n.name] = n.id);
+  const edges = [];
+  const seen = new Set();
+  (data && data.relations || []).forEach(r => {
+    const s = nameToId[r.from], t = nameToId[r.to];
+    if(s && t && s !== t && !seen.has(s+'->'+t)){ edges.push({ source: s, target: t, relation: r.type || '先修' }); seen.add(s+'->'+t); }
+  });
+  // 兜底：relations 为空时，用 prerequisite 字段生成边
+  if(edges.length === 0){
+    nodes.forEach(n => {
+      const pid = n.prereq ? nameToId[n.prereq] : null;
+      if(pid && pid !== n.id && !seen.has(pid+'->'+n.id)){ edges.push({ source: pid, target: n.id, relation: '先修' }); seen.add(pid+'->'+n.id); }
+    });
+  }
+  return { subject: data.summary || '', nodes, edges, learning_path: nodes.map(n => n.id) };
+}
 
 /* ================= 导航 / 视图切换 ================= */
 const App = {
@@ -620,7 +650,7 @@ const Workbench = (function(){
   const ACCEPT = /\.(png|jpe?g|pdf|txt|md|pptx|docx|doc)$/i;
   function resetToEmpty(){ resetSteps(); setState(''); card.classList.remove('hot'); }
   function readAsBase64(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>{ const s=r.result; res(String(s).split(',')[1]||s); }; r.onerror=rej; r.readAsDataURL(file); }); }
-  function readAsText(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsText(file); }); }
+  function readAsText(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>{ const buf=r.result; let text=new TextDecoder('utf-8').decode(buf); if(text.indexOf('\uFFFD')!==-1){ try{ text=new TextDecoder('gbk').decode(buf); }catch(e){} } res(text); }; r.onerror=rej; r.readAsArrayBuffer(file); }); }
 
   // 处理上传文件：读取内容 → 调后端 /api/analyze → 渲染结果 + 填充星空图
   async function processFile(file){
@@ -631,7 +661,11 @@ const Workbench = (function(){
     runSteps(async ()=>{
       try {
         const isText = ['txt','md'].includes(ext);
-        const body = isText ? { pdf_text: await readAsText(file) } : { image_base64: await readAsBase64(file) };
+        const isPdf = ext === 'pdf';
+        let body;
+        if(isText){ body = { pdf_text: await readAsText(file) }; }
+        else if(isPdf){ body = { pdf_base64: await readAsBase64(file) }; }
+        else { body = { image_base64: await readAsBase64(file) }; }
         const data = await apiPost('/api/analyze', body);
         if(data.ocr_status === 'pending'){
           errPill.textContent = '⚠️ ' + name;
@@ -639,8 +673,9 @@ const Workbench = (function(){
           logtxt.innerHTML = '<span class="hl">' + (data.message||'OCR 待接入') + '</span>（图片识别暂未接入，请上传 .txt/.md 文本文件体验）';
           return;
         }
-        renderKnowledgeCards(data);   // 渲染知识点卡片
-        Star.loadData(data);           // 填充星空图
+        const adapted = adaptKnowledge(data);  // 适配后端新字段结构
+        renderKnowledgeCards(adapted);          // 渲染知识点卡片
+        Star.loadData(adapted);                 // 填充星空图
         donePill.textContent = '✓ ' + name + ' · 解析完成';
         setState('success');
       } catch(e){

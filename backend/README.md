@@ -20,18 +20,31 @@ pip install -r requirements.txt
 
 ## 二、配置环境变量（关键，Key 绝不写进代码）
 
-**Windows（PowerShell）：**
+**方式 A：`.env` 文件（推荐，本地开发最方便）**
+
+```bash
+# 复制模板，填入你的密钥
+cp .env.example .env
+# 编辑 .env，把 DEEPSEEK_API_KEY 改成你的真实密钥
+```
+
+> `.env` 已被 `.gitignore` 忽略，不会提交到代码仓库。
+
+**方式 B：系统环境变量**
+
+Windows（PowerShell）：
 
 ```powershell
 $env:DEEPSEEK_API_KEY="sk-你的DeepSeek密钥"
 ```
 
-**macOS / Linux：**
+macOS / Linux：
 
 ```bash
 export DEEPSEEK_API_KEY="sk-你的DeepSeek密钥"
 ```
 
+> 优先级：系统/平台环境变量 > `.env` 文件（`.env` 不会覆盖已存在的环境变量）。
 > 可选变量：
 > - `DEEPSEEK_BASE_URL`：默认 `https://api.deepseek.com/v1`
 > - `DEEPSEEK_MODEL`：默认 `deepseek-chat`
@@ -74,27 +87,37 @@ python app.py
 
 ### 2. `POST /api/analyze` —— 知识点结构化抽取
 
-请求体二选一：
+请求体三选一（对应不同文件类型）：
 
 ```json
-{ "pdf_text": "课件已提取的纯文本..." }
+{ "pdf_text": "已提取的纯文本（txt/md 文件）" }
 ```
 
 或
 
 ```json
-{ "image_base64": "图片的 base64 字符串" }
+{ "pdf_base64": "PDF 文件的 base64（后端用 PyMuPDF 提取文字）" }
 ```
 
-返回知识点图谱（与前端 `knowledge_points` 对齐）：
+或
+
+```json
+{ "image_base64": "图片的 base64（后端走 OCR 识别）" }
+```
+
+返回知识点结构化结果（字段按约定输出）：
 
 ```json
 {
   "ocr_status": "ok",
-  "subject": "高等数学 · 微积分",
-  "nodes": [ {"id": "derivative", "name": "导数", "difficulty": "medium", "importance": 0.8, "summary": "...", "points": ["..."], "example": "..."} ],
-  "edges": [ {"source": "limits", "target": "derivative", "relation": "先修"} ],
-  "learning_path": ["limits", "derivative", "integral"]
+  "material_type": "讲义",
+  "summary": "本文介绍微积分基础概念",
+  "knowledge_points": [
+    { "name": "导数", "level": "进阶", "key_idea": "瞬时变化率", "prerequisite": "函数与极限", "example": "y=x² 在 x=3 斜率 6" }
+  ],
+  "relations": [
+    { "from": "函数与极限", "to": "导数", "type": "先修" }
+  ]
 }
 ```
 
@@ -108,13 +131,28 @@ python app.py
 
 ## 六、前端对接
 
-把前端 HTML 里模拟的 `aiReply` / 上传解析替换为对本服务的 `fetch` 调用即可：
+前端已放在 `static/index.html`（Vue3 版 / 纯 HTML 版均可），通过**相对路径**调同源后端：
 
 ```js
-const res = await fetch('http://localhost:8000/api/chat', {
+// 相对路径，同源部署（前端由后端服务，无需写域名）
+const res = await fetch('/api/chat', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ messages: [...] })
 });
 const { reply } = await res.json();
 ```
+
+## 七、验证 API 接入（真实链路）
+
+填好 Key 并启动后，跑一遍验证脚本，确认 DeepSeek 链路真实可用：
+
+```bash
+python test_api.py
+# 依次验证 GET /health、POST /api/chat、POST /api/analyze
+```
+
+## 八、部署与 OCR
+
+- **一键部署**：`render.yaml` 是 Render Blueprint 配置，推到 GitHub 后在 Render 用「Blueprint」即可自动创建服务；详细步骤见 `DEPLOY.md`。
+- **OCR（付费示例）**：`ocr_tencent.py` 已接入腾讯云「通用印刷体识别」。配置 `TENCENT_SECRET_ID` / `TENCENT_SECRET_KEY` 后，图片上传走真实 OCR；未配置则返回「OCR 待接入」占位。启用需在 `requirements.txt` 取消注释 `tencentcloud-sdk-python-ocr`。

@@ -1,3 +1,10 @@
-fastapi>=0.110.0
+	fastapi>=0.110.0
 uvicorn[standard]>=0.29.0
 httpx>=0.27.0
+
+# 可选：接入腾讯云 OCR（图片识别）时启用，取消注释即可
+tencentcloud-sdk-python-ocr>=3.0.1000
+
+rapidocr-onnxruntime>=1.3.0
+opencv-python-headless>=4.8.0
+numpy>=1.24.0

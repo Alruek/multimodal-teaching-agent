@@ -1,0 +1,22 @@
+# Render.com Blueprint —— 一键部署配置
+# 用法：把整个 backend/ 目录推到 GitHub，然后在 Render 控制台
+#       New + → Blueprint → 选择仓库即可自动创建服务。
+services:
+  - type: web
+    name: zhiyu
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    plan: free
+    envVars:
+      # sync: false 表示该变量需要你在 Render 后台手动填写真实值
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: DEEPSEEK_MODEL
+        value: deepseek-chat
+      # 若接入腾讯云 OCR，取消注释并在后台填写凭证
+      # - key: TENCENT_SECRET_ID
+      #   sync: false
+      # - key: TENCENT_SECRET_KEY
+      #   sync: false

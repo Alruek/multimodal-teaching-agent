@@ -103,7 +103,7 @@ def health():
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 ```
 
-前端 `API_BASE` 也已自动适配：**本地开发**走 `http://localhost:8000`，**线上部署**走同源相对路径（无需任何配置）。
+前端 `API_BASE` 默认为**相对路径**（同源部署，前端页面由后端一并服务，无需任何配置）；若前后端分离部署，用 `?api=https://后端域名` 覆盖即可。
 
 ---
 
