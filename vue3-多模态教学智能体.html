@@ -516,8 +516,11 @@
 const API_BASE = (new URLSearchParams(location.search).get('api')) || '';
 async function apiPost(path, body){
   let res;
-  try { res = await fetch(API_BASE + path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }); }
-  catch(e){ throw new Error('无法连接后端服务，请确认已启动。'); }
+  const ctrl = new AbortController();
+  const guard = setTimeout(()=>ctrl.abort(), 20000);
+  try { res = await fetch(API_BASE + path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body), signal: ctrl.signal }); }
+  catch(e){ if(ctrl.signal.aborted) throw new Error('请求超时（20秒），请重试。'); throw new Error('无法连接后端服务，请确认已启动。'); }
+  finally{ clearTimeout(guard); }
   const data = await res.json().catch(()=>({ detail:'后端返回非 JSON' }));
   if(!res.ok) throw new Error(data.detail || ('后端请求失败（HTTP '+res.status+'）'));
   return data;
@@ -783,8 +786,16 @@ createApp({
     function scrollChat(){ nextTick(()=>{ if(chatBody.value) chatBody.value.scrollTop = chatBody.value.scrollHeight; }); }
 
     async function typewriter(msgObj, fullMd){
+      const reduce = (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) || fullMd.length > 6000;
+      if(reduce){ msgObj.html = renderMD(fullMd); scrollChat(); return; }
+      const step = fullMd.length > 1200 ? 8 : 4;      // 长回答用更大步长快速输出
       let acc='';
-      for(let i=0;i<=fullMd.length;i++){ acc=fullMd.slice(0,i); msgObj.html=renderMD(acc)+'<span class="cursor"></span>'; scrollChat(); if(i%2===0) await new Promise(r=>setTimeout(r,12)); }
+      for(let i=0;i<=fullMd.length;i+=step){
+        acc=fullMd.slice(0, Math.min(i+step, fullMd.length));
+        msgObj.html=renderMD(acc)+'<span class="cursor"></span>';
+        scrollChat();
+        await new Promise(r=>setTimeout(r,8));
+      }
       msgObj.html=renderMD(fullMd);
     }
 
@@ -818,16 +829,25 @@ createApp({
       const msgObj = { role:'ai', html:'<span class="typing"><i></i><i></i><i></i></span>' };
       msgObj.copyIndex = messages.value.length;
       messages.value.push(msgObj);
+      scrollChat();
       try {
         const sys = '你是「知屿 ZhiYu」教学智能体里的 AI 助教，正在讲解知识点「'+current.value+'」。请清晰、耐心、循序渐进地回答，可用 Markdown，数学公式用 LaTeX（$...$ 或 $$...$$）。';
-        const data = await apiPost('/api/chat', { messages:[{role:'system',content:sys},{role:'user',content:userText}] });
+        const hist = [];
+        for(let i=0;i<messages.value.length;i++){
+          const m = messages.value[i];
+          if(m === msgObj) break;
+          if(m.role === 'stu') hist.push({ role:'user', content:m.text });
+          else if(m.role === 'ai' && m.plain) hist.push({ role:'assistant', content:m.plain });
+        }
+        const payload = { messages:[{ role:'system', content:sys }, ...hist.slice(-24)] };
+        const data = await apiPost('/api/chat', payload);
         const reply = data.reply || '（后端未返回回答）';
         msgObj.plain = reply;
+        sending.value = false;                     // 收到回复即释放，不等打字机打完
         await typewriter(msgObj, reply);
         addQuick(msgObj); await bindQuick();
       } catch(e){ msgObj.html = '<span style="color:var(--red)">⚠️ '+escapeHtml(e.message||'调用失败')+'</span>'; }
-      sending.value = false;
-      scrollChat();
+      finally{ sending.value = false; scrollChat(); }
     }
     function onInputKey(e){
       if(e.isComposing || e.keyCode===229) return;  // 中文输入法组合中按回车不发送
