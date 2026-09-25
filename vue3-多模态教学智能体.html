@@ -43,6 +43,47 @@
   .side-foot .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);animation:pulse 2s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
+  /* 侧边栏：概览 + 最近知识点 */
+  .side-panels{flex:1;display:flex;flex-direction:column;gap:14px;margin-top:26px;overflow:auto;min-height:0}
+  .side-panels::-webkit-scrollbar{width:6px}
+  .side-panels::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:6px}
+  .side-panel{border:1px solid var(--glass-border);border-radius:16px;background:rgba(255,255,255,.028);padding:14px 14px 15px;backdrop-filter:blur(12px)}
+  .side-panel .sp-title{display:flex;align-items:center;gap:7px;font-family:var(--font-display);font-weight:700;font-size:13px;margin-bottom:12px}
+  .side-panel .sp-title .sp-eyebrow{flex:1;font-size:10px;font-weight:500;letter-spacing:1.5px;color:var(--text-dim);text-align:right}
+  .ov-count{display:flex;align-items:baseline;gap:8px}
+  .ov-count .num{font-family:var(--font-display);font-size:34px;font-weight:800;line-height:1;background:linear-gradient(120deg,var(--accent),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .ov-count .unit{font-size:12px;color:var(--text-dim)}
+  .ov-dots{display:flex;gap:4px;margin-top:13px;height:6px}
+  .ov-seg{height:6px;border-radius:6px;transition:.3s}
+  .ov-legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+  .ov-chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;padding:3px 9px;border-radius:100px;border:1px solid var(--glass-border);color:var(--text-dim)}
+  .ov-chip i{width:7px;height:7px;border-radius:50%;display:inline-block}
+  .ov-empty{font-size:11.5px;color:var(--text-dim);line-height:1.7;margin-top:4px}
+  .ov-empty b{color:var(--accent);cursor:pointer}
+  .recent-list{display:flex;flex-direction:column;gap:3px}
+  .rv{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:10px;cursor:pointer;transition:.18s;border:1px solid transparent}
+  .rv:hover{background:rgba(255,255,255,.05);border-color:var(--glass-border)}
+  .rv .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .rv .n{flex:1;font-size:11.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rv .b{font-size:9.5px;padding:1px 7px;border-radius:100px;flex-shrink:0;font-weight:600}
+  .recent-empty{font-size:11px;color:var(--text-dim);line-height:1.7}
+  .recent-empty b{color:var(--accent);cursor:pointer}
+  .side-foot{margin-top:0}
+
+  /* 概览卡内：最近答疑 + 知识点掌握度 */
+  .ov-divider{height:1px;margin:13px 0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent)}
+  .sp-title.sp-sub{margin-top:2px;font-size:12px}
+  .b-go{color:var(--text-dim)!important;background:rgba(255,255,255,.05)!important}
+  .mastery{display:flex;flex-direction:column;gap:7px;margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,255,255,.06)}
+  .ms-head{display:flex;align-items:center;font-size:10.5px;font-weight:600;color:var(--text-dim);letter-spacing:.3px}
+  .ms-head .sp-eyebrow{flex:1}
+  .ms-row{display:flex;align-items:center;gap:8px}
+  .ms-name{flex:0 0 34%;font-size:10.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ms-track{flex:1;height:5px;border-radius:5px;background:rgba(255,255,255,.06);overflow:hidden}
+  .ms-track i{display:block;height:100%;border-radius:5px;transition:width .4s ease}
+  .ms-count{font-size:10px;color:var(--text-dim);min-width:12px;text-align:right}
+  .ms-empty{font-size:10.5px;color:var(--text-dim);line-height:1.6;margin-top:11px}
+
   /* 内容 */
   .content{flex:1;overflow:hidden;display:flex;flex-direction:column}
   .view{display:none;flex:1;overflow-y:auto;padding:26px 30px 50px}
@@ -74,6 +115,16 @@
   .status-msg{font-family:var(--font-display);font-weight:600;font-size:16px}
   .file-pill{display:inline-flex;align-items:center;gap:10px;font-size:13px;background:rgba(0,229,195,.08);border:1px solid rgba(0,229,195,.3);color:var(--accent);padding:7px 16px;border-radius:100px;font-family:var(--font-mono)}
   .file-pill.err{color:var(--red);border-color:rgba(255,84,112,.4);background:rgba(255,84,112,.08)}
+
+  /* 文件预览 */
+  .preview{margin-top:4px;display:flex;flex-direction:column;align-items:center;gap:8px}
+  .preview-img{max-height:120px;max-width:240px;border-radius:12px;border:1px solid var(--glass-border);box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .preview-file{display:inline-flex;align-items:center;gap:10px;padding:10px 16px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--glass-border)}
+  .pf-icon{font-size:22px}
+  .pf-name{font-size:13px;color:var(--text-dim);font-family:var(--font-mono);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .thumb-mini{position:absolute;left:18px;bottom:18px;width:46px;height:46px;border-radius:10px;overflow:hidden;display:grid;place-items:center;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);font-size:20px}
+  .thumb-mini img{width:100%;height:100%;object-fit:cover}
+  .error-box{font-size:15px;color:var(--text);line-height:1.7;max-width:460px;padding:12px 16px;border-radius:12px;background:linear-gradient(135deg,rgba(255,84,112,.18),rgba(255,84,112,.04));border:1px solid rgba(255,84,112,.25)}
 
   /* 步骤条 */
   .steps-section{max-width:760px;margin:28px auto 0;padding:26px 28px;border-radius:20px;background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(20px)}
@@ -174,6 +225,67 @@
   .chat-input textarea{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--glass-border);border-radius:12px;padding:11px 16px;color:var(--text);font-size:14px;font-family:var(--font-body);outline:none;resize:none;min-height:43px;max-height:100px;line-height:1.5}
   .chat-input textarea:focus{border-color:rgba(0,229,195,.5)}
   .send-btn{background:linear-gradient(135deg,var(--accent),var(--cyan));border:none;color:#04211b;font-weight:700;font-size:14px;padding:0 20px;height:43px;border-radius:12px;cursor:pointer;font-family:var(--font-display)}
+  .send-btn:disabled{opacity:.5;cursor:not-allowed}
+  .clear-btn{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-dim);background:rgba(255,255,255,.05);border:1px solid var(--glass-border);padding:7px 12px;border-radius:9px;cursor:pointer;transition:.2s}
+  .clear-btn:hover{color:var(--red);border-color:rgba(255,84,112,.4);background:rgba(255,84,112,.08)}
+
+  /* 正在输入 three-dots */
+  .typing{display:inline-flex;align-items:center;gap:4px;padding:4px 2px}
+  .typing i{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:typingBounce 1.2s ease-in-out infinite}
+  .typing i:nth-child(2){animation-delay:.2s}
+  .typing i:nth-child(3){animation-delay:.4s}
+  @keyframes typingBounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
+
+  /* 结果操作按钮 */
+  .ok-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+  .actions-row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+  .btn-soft{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:12px;font-family:var(--font-display);font-weight:600;font-size:13.5px;cursor:pointer;border:1px solid var(--glass-border);color:var(--text);background:rgba(255,255,255,.05);transition:.2s}
+  .btn-soft:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.18);transform:translateY(-1px)}
+  .btn-soft.accent{background:linear-gradient(135deg,rgba(0,229,195,.16),rgba(34,211,238,.12));border-color:rgba(0,229,195,.35);color:var(--accent)}
+  .btn-soft.accent:hover{box-shadow:0 6px 22px rgba(0,229,195,.22);background:linear-gradient(135deg,rgba(0,229,195,.22),rgba(34,211,238,.18))}
+
+  /* 星图：示例数据标识 + 空态覆盖 */
+  .star-tag{position:absolute;top:14px;left:16px;display:none;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);padding:5px 11px;border-radius:100px;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);pointer-events:none}
+  .star-tag.show{display:inline-flex}
+  .star-empty{position:absolute;top:44px;left:0;right:0;text-align:center;color:var(--text-dim);font-size:13.5px;padding:20px;line-height:1.8;display:block;pointer-events:none}
+  .star-empty b{color:var(--accent)}
+
+  /* 答疑：复制按钮 + 语音 */
+  .copy-btn{display:inline-flex;align-items:center;gap:5px;margin:4px 2px 0;font-size:11.5px;color:var(--text-dim);background:rgba(255,255,255,.05);border:1px solid var(--glass-border);padding:4px 10px;border-radius:7px;cursor:pointer;transition:.2s}
+  .copy-btn:hover{color:var(--accent);border-color:rgba(0,229,195,.35)}
+  .mic-btn{flex-shrink:0;width:43px;height:43px;border-radius:12px;border:1px solid var(--glass-border);background:rgba(255,255,255,.05);color:var(--text-dim);cursor:pointer;font-size:16px;display:grid;place-items:center;transition:.2s}
+  .mic-btn:hover{color:var(--accent);border-color:rgba(0,229,195,.4)}
+  .mic-btn.listening{color:#fff;background:linear-gradient(135deg,var(--pink),var(--violet));animation:pulse 1.2s infinite}
+
+  /* 无障碍：focus 与 reduce-motion */
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+  button:active{transform:scale(.97)}
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.001s !important;animation-iteration-count:1 !important;transition-duration:.001s !important;scroll-behavior:auto !important}
+    .typing,.cursor{cursor:default}
+  }
+  .cursor{will-change:opacity}
+
+  .chat-input textarea{transition:border-color .2s,box-shadow .2s}
+  .chat-input textarea:focus{box-shadow:0 0 0 3px rgba(0,229,195,.12)}
+  .menu .mi.active .ic{transform:scale(1.1)}
+  .menu .mi .ic{transition:transform .2s}
+
+  /* toast */
+  .toast-wrap{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:130;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+  .toast{display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:12px;background:rgba(16,22,40,.94);border:1px solid var(--glass-border);box-shadow:0 12px 40px rgba(0,0,0,.45);font-size:13px;color:var(--text);backdrop-filter:blur(10px);animation:toastIn .25s ease;max-width:80vw}
+  .toast.ok{border-color:rgba(0,229,195,.45)}
+  .toast.err{border-color:rgba(255,84,112,.5)}
+  @keyframes toastIn{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+  @keyframes toastOut{to{opacity:0;transform:translateY(-10px)}}
+
+  /* 空状态提示 + 欢迎卡片 */
+  .empty-hint{margin-top:28px;padding:36px 20px;text-align:center;border-radius:16px;background:var(--glass);border:1px dashed var(--glass-border);color:var(--text-dim);font-size:14.5px}
+  .welcome-card{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:30px 20px}
+  .wc-emoji{font-size:46px}
+  .wc-title{font-family:var(--font-display);font-weight:700;font-size:19px}
+  .wc-sub{font-size:13.5px;color:var(--text-dim);line-height:1.7;max-width:360px}
+  .wc-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px}
 
   @media(max-width:920px){
     .app{flex-direction:column}
@@ -202,6 +314,50 @@
         <div class="mi" :class="{active: view==='star'}" @click="view='star'"><span class="ic">✦</span>知识星图</div>
         <div class="mi" :class="{active: view==='chat'}" @click="view='chat'"><span class="ic">💬</span>答疑对话</div>
       </div>
+      <div class="side-panels">
+        <div class="side-panel">
+          <div class="sp-title">📈 学习概览<span class="sp-eyebrow">本讲义</span></div>
+          <div class="ov-count"><span class="num">{{ overview.total }}</span><span class="unit">个知识点</span></div>
+          <div class="ov-dots" v-if="overview.total">
+            <div class="ov-seg" v-for="(s,i) in overview.segs" :key="i" :style="{width: s.k+'%', background: s.color}"></div>
+          </div>
+          <div class="ov-legend" v-if="overview.total">
+            <span class="ov-chip" v-for="(v,k) in overview.counts" :key="k"><i :style="{background: difficultyColor[k]}"></i>{{ levelLabel[k] }} {{ v }}</span>
+          </div>
+          <div class="ov-empty" v-else>暂无知识点<br>上传一份讲义，生成你的<b @click="view='workbench'">学习概览</b> ✨</div>
+
+          <div class="ov-divider"></div>
+          <div class="sp-title sp-sub">💬 最近答疑<span class="sp-eyebrow">{{ totalAsks }} ASK</span></div>
+          <div class="recent-list" v-if="lastAsks.length">
+            <div class="rv" v-for="(q,i) in lastAsks" :key="'q'+i" @click="view='chat'; input = q.text" :title="'点击填入提问：「'+q.text+'」'">
+              <span class="q-ic">🧑</span><span class="n">{{ q.text }}</span>
+              <span class="b b-go">→</span>
+            </div>
+          </div>
+          <div class="recent-empty" v-else>还没提问，去答疑区问一个问题吧<br><b @click="view='chat'">开始答疑 →</b></div>
+
+          <div class="mastery" v-if="masteryList.length">
+            <div class="ms-head">知识点掌握度<span class="sp-eyebrow">追问 {{ totalMastery }} 次</span></div>
+            <div class="ms-row" v-for="(t,i) in masteryList" :key="'m'+i">
+              <span class="ms-name" :title="t.name">{{ t.name }}</span>
+              <span class="ms-track"><i :style="{width: (t.c/maxMastery*100)+'%', background: t.color}"></i></span>
+              <span class="ms-count">{{ t.c }}</span>
+            </div>
+          </div>
+          <div class="ms-empty" v-else>选择知识点提问后，这里会显示各知识点被追问的次数。</div>
+        </div>
+        <div class="side-panel">
+          <div class="sp-title">🕘 最近知识点<span class="sp-eyebrow">{{ recent.length }} RECENT</span></div>
+          <div class="recent-list" v-if="recent.length">
+            <div class="rv" v-for="(it,i) in recent" :key="i" @click="openDrawer(it)">
+              <span class="dot" :style="{background: it.color}"></span>
+              <span class="n">{{ it.name }}</span>
+              <span class="b" :style="{color: it.color, background: it.color + '1a'}">{{ levelLabel[it.difficulty] }}</span>
+            </div>
+          </div>
+          <div class="recent-empty" v-else>解析后，「最近知识点」会出现在这里<br><b @click="view='workbench'">去解析一份讲义 →</b></div>
+        </div>
+      </div>
       <div class="side-foot"><span class="dot"></span><span>AI 助教在线 · 同源后端</span></div>
     </aside>
 
@@ -221,6 +377,10 @@
             <div class="upload-zone" @click="pickFile" @dragover.prevent="dragging=true" @dragleave="dragging=false" @drop.prevent="onDrop">
               <div class="frame"></div>
               <div class="maw"><div class="core"><svg viewBox="0 0 24 24" fill="none" stroke="#04211b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M12 4L7 9M12 4l5 5"/><path d="M4 20h16"/></svg></div></div>
+              <div class="preview" v-if="previewUrl || fileType">
+                <img v-if="fileType==='image'" :src="previewUrl" class="preview-img" alt="预览">
+                <div v-else class="preview-file"><span class="pf-icon">{{ fileType==='pdf' ? '📄' : '📝' }}</span><span class="pf-name">{{ fileName }}</span></div>
+              </div>
               <template v-if="uploadState==='empty'">
                 <div class="uz-title">拖拽素材到这里，或 <b>点击上传</b></div>
                 <div class="uz-sub">支持图片（png/jpg）、PDF、文本（txt/md）。AI 会解析成知识点，串联成知识星图。</div>
@@ -231,15 +391,22 @@
                 <div class="status-msg">AI 老师正在读你的资料…</div>
               </template>
               <template v-else-if="uploadState==='success'">
+                <div class="thumb-mini" v-if="fileType==='image'"><img :src="previewUrl" alt="缩略图"></div>
+                <div class="thumb-mini" v-else>{{ fileType==='pdf' ? '📄' : '📝' }}</div>
                 <div class="file-pill">✓ {{ fileName }} · 解析完成</div>
                 <div class="status-msg">已提炼出 <span style="color:var(--accent)">{{ knowledge.length }}</span> 个知识点</div>
-                <button class="btn btn-ghost" style="width:auto;padding:10px 20px" @click.stop="resetUpload">↺ 重新上传</button>
+                <div class="actions-row">
+                  <button class="btn-soft accent" @click.stop="gotoStar">✦ 前往知识星图</button>
+                  <button class="btn-soft accent" @click.stop="goChat(knowledge[0] && knowledge[0].name || '知识答疑')">💬 立即答疑</button>
+                  <button class="btn-soft" @click.stop="resetUpload">↺ 重新上传</button>
+                </div>
+                <div class="empty-hint" v-if="!knowledge.length" style="margin-top:8px;padding:14px 20px">还没有知识点，试着上传一份讲义？</div>
               </template>
               <template v-else>
                 <div class="file-pill err">✕ {{ fileName }}</div>
                 <div class="status-msg" style="color:var(--red)">解析失败</div>
-                <div class="uz-sub">{{ errorMsg }}</div>
-                <button class="btn btn-ghost" style="width:auto;padding:10px 20px" @click.stop="resetUpload">↺ 重新上传</button>
+                <div class="error-box">{{ errorMsg }}</div>
+                <button class="btn btn-primary" style="width:auto;padding:10px 22px" @click.stop="resetUpload">↺ 重新上传</button>
               </template>
             </div>
           </div>
@@ -261,6 +428,7 @@
               <div class="example" v-if="k.example"><b>例：</b>{{ k.example }}</div>
             </div>
           </div>
+          <div class="empty-hint" v-else-if="uploadState==='success'">还没有知识点，试着上传一份讲义？</div>
         </div>
       </section>
 
@@ -275,6 +443,8 @@
           <div class="main-grid">
             <div class="map-card" ref="mapCard">
               <div class="map-corner">{{ corner }}</div>
+              <div class="star-tag" :class="{show: isDemo}">ⓘ 示例数据 · 上传讲义后可切换</div>
+              <div class="star-empty" v-if="!isDemo && !knowledge.length">这份讲义里没有提炼出可展示的知识点<br>换个素材试试吧 ✨</div>
               <canvas ref="starCanvas"></canvas>
               <div class="tooltip" ref="tooltip"></div>
             </div>
@@ -295,8 +465,16 @@
       <section class="view" :class="{active: view==='chat'}">
         <div class="inner">
           <div class="chat-panel">
-            <div class="chat-head"><span class="dot"></span><div><div class="k-name">{{ current }}</div><div class="k-sub">你的 AI 助教 · 同源后端真实回答</div></div></div>
+            <div class="chat-head"><span class="dot"></span><div><div class="k-name">{{ current }}</div><div class="k-sub">你的 AI 助教 · 同源后端真实回答</div></div><button class="clear-btn" @click="clearChat">🗑 清空对话</button></div>
             <div class="chat-body" ref="chatBody">
+              <div class="welcome-card" v-if="messages.length===0">
+                <div class="wc-emoji">👋</div>
+                <div class="wc-title">你好，我是知屿 AI 助教</div>
+                <div class="wc-sub">针对「{{ current }}」，直接输入问题开始对话，或点下方快捷提问。</div>
+                <div class="wc-actions">
+                  <button class="qbtn" v-for="(q,i) in welcomeQuestions" :key="i" @click="quickAsk(q)">{{ q.label }}</button>
+                </div>
+              </div>
               <div class="msg" v-for="(m,i) in messages" :key="i" :class="m.role">
                 <div class="avatar">{{ m.role==='ai' ? '师' : '我' }}</div>
                 <div class="bubble" v-if="m.role==='ai'" v-html="m.html"></div>
@@ -304,8 +482,9 @@
               </div>
             </div>
             <div class="chat-input">
-              <textarea v-model="input" placeholder="向 AI 助教提问…" @keydown.enter.exact.prevent="send"></textarea>
-              <button class="send-btn" @click="send">发送</button>
+              <button class="mic-btn" :class="{listening: listening}" :title="voiceHint" @click="toggleVoice">🎙️</button>
+              <textarea v-model="input" ref="chatInput" placeholder="向 AI 助教提问…（Enter 发送）" @keydown.enter.exact.prevent="onInputKey"></textarea>
+              <button class="send-btn" :disabled="sending || !input.trim()" @click="send">{{ sending ? '思考中…' : '发送' }}</button>
             </div>
           </div>
         </div>
@@ -327,6 +506,8 @@
     <button class="btn btn-primary" v-if="drawer" @click="goChat(drawer.name)">💬 去和 AI 助教聊这个知识点</button>
     <button class="btn btn-ghost" @click="drawer=null">关闭</button>
   </aside>
+  <!-- toast -->
+  <div class="toast-wrap"></div>
 </div>
 
 <script>
@@ -470,7 +651,7 @@ function createStarMap(canvas, tooltip, opts){
   canvas.addEventListener('pointerup',()=>{ if(dragging&&!moved) onSelect(dragging); dragging=null; });
   canvas.addEventListener('pointerleave',()=>{ highlightId=null; tooltip.style.opacity='0'; });
 
-  return { ensureInit, loadData, highlight };
+  return { ensureInit, loadData, highlight, demo };
 }
 
 /* ================= Vue 应用 ================= */
@@ -487,6 +668,8 @@ createApp({
     const uploadState = ref('empty');
     const fileName = ref('');
     const errorMsg = ref('');
+    const previewUrl = ref('');   // 图片预览 objectURL
+    const fileType = ref('');     // 'image' | 'pdf' | 'text'
     const steps = [{name:'识别',emoji:'📄'},{name:'提取',emoji:'🔍'},{name:'结构化',emoji:'🕸️'},{name:'可答疑',emoji:'💬'}];
     const stepIndex = ref(-1);
     const logText = ref('');
@@ -498,6 +681,7 @@ createApp({
     const corner = ref('');
     const path = ref([]);
     const drawer = ref(null);
+    const isDemo = ref(true);   // 星图当前是否展示示例数据
     let starMap = null;
 
     // 答疑
@@ -508,6 +692,54 @@ createApp({
 
     // 适配后的知识点（nodes）
     const knowledge = ref([]);
+
+    // 侧边栏：难度配色 + 学习概览 + 最近知识点
+    const difficultyColor = { easy:'#34d399', medium:'#22d3ee', hard:'#ff6b9d' };
+    const overview = computed(() => {
+      const counts = { easy:0, medium:0, hard:0 };
+      knowledge.value.forEach(n => {
+        const d = String(n.difficulty||'easy').toLowerCase();
+        if (counts[d]!=null) counts[d]++;
+      });
+      const total = counts.easy + counts.medium + counts.hard;
+      const pct = k => total ? Math.round(counts[k]/total*100) : 0;
+      return { total, counts, segs:[
+        { k:pct('easy'), color:difficultyColor.easy },
+        { k:pct('medium'), color:difficultyColor.medium },
+        { k:pct('hard'), color:difficultyColor.hard },
+      ] };
+    });
+    const recent = computed(() => knowledge.value.slice(0,4));
+
+    // 侧边栏：最近答疑进度（最近提问 + 知识点掌握度，跨会话持久化）
+    const MASTERY_KEY = 'zhiyu:mastery';
+    function loadMastery(){ try{ const s = localStorage.getItem(MASTERY_KEY); const o = s ? JSON.parse(s) : {}; return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; }catch(e){ return {}; } }
+    function persistMastery(){ try{ localStorage.setItem(MASTERY_KEY, JSON.stringify({ ...mastery })); }catch(e){ /* 私有模式等场景直接忽略 */ } }
+    const mastery = reactive(loadMastery());
+    const HIST_KEY = 'zhiyu:history';
+    function loadHistory(){ try{ const s = localStorage.getItem(HIST_KEY); const a = s ? JSON.parse(s) : []; return Array.isArray(a) ? a.filter(x => x && typeof x.text === 'string') : []; }catch(e){ return []; } }
+    function persistHistory(){ try{ localStorage.setItem(HIST_KEY, JSON.stringify(history.value)); }catch(e){ /* 私有模式等场景直接忽略 */ } }
+    const history = ref(loadHistory());
+    const lastAsks = computed(() => history.value.slice(0,4));
+    const totalAsks = computed(() => messages.value.reduce((n,m) => n + (m.role === 'stu' ? 1 : 0), 0));
+    const masteryList = computed(() => {
+      const known = new Set(knowledge.value.map(k => k.name));
+      return Object.keys(mastery)
+        .filter(name => known.has(name))
+        .map(name => ({ name, c: mastery[name], color: (knowledge.value.find(k => k.name === name) || {}).color || '#22d3ee' }))
+        .sort((a,b) => b.c - a.c)
+        .slice(0,3);
+    });
+    const maxMastery = computed(() => Math.max(1, ...masteryList.value.map(t => t.c)));
+    const totalMastery = computed(() => masteryList.value.reduce((s,t) => s + t.c, 0));
+
+    // 答疑：发送状态 + 欢迎快捷提问
+    const sending = ref(false);
+    const welcomeQuestions = [
+      { label:'🔍 举个例子', prompt:'能举一个具体的例子解释这个知识点吗？' },
+      { label:'📝 出个题', prompt:'请出一道关于当前知识点的练习题，先不要公布答案。' },
+      { label:'🔁 换个讲法', prompt:'能换个更直观的方式（打比方、举例子）再讲一遍吗？' },
+    ];
 
     function pickFile(){ fileInput.value.click(); }
     function onFileChange(e){ const f = e.target.files && e.target.files[0]; if(f) processFile(f); e.target.value=''; }
@@ -520,6 +752,11 @@ createApp({
       const name = file.name || '未命名文件';
       const ext = (name.split('.').pop()||'').toLowerCase();
       fileName.value = name;
+      // 释放旧预览，生成新预览
+      if(previewUrl.value){ URL.revokeObjectURL(previewUrl.value); previewUrl.value=''; }
+      if(['png','jpg','jpeg'].includes(ext)){ fileType.value='image'; previewUrl.value=URL.createObjectURL(file); }
+      else if(ext==='pdf'){ fileType.value='pdf'; }
+      else { fileType.value='text'; }
       if(!/\.(png|jpe?g|pdf|txt|md)$/i.test(name)){ uploadState.value='error'; errorMsg.value='格式不支持，请上传图片/PDF/文本文件。'; return; }
       uploadState.value='uploading'; stepIndex.value=-1; logText.value='正在初始化 AI 老师…';
       // 步骤动画
@@ -536,11 +773,12 @@ createApp({
         const adapted = adaptKnowledge(data);
         knowledge.value = adapted.nodes;
         uploadState.value='success';
-        starMap && starMap.loadData(adapted);  // 填充星图
-        view.value='star';  // 自动跳转星图
-      } catch(e){ uploadState.value='error'; errorMsg.value=e.message||'解析失败'; }
+        isDemo.value = false;
+        starMap && starMap.loadData(adapted);  // 填充星图（不自动跳转，用户在成功卡片手动前往）
+      } catch(e){ uploadState.value='error'; errorMsg.value=e.message||'解析失败'; toast(e.message||'解析失败','err'); }
     }
-    function resetUpload(){ uploadState.value='empty'; knowledge.value=[]; stepIndex.value=-1; }
+    function resetUpload(){ uploadState.value='empty'; knowledge.value=[]; stepIndex.value=-1; if(previewUrl.value){ URL.revokeObjectURL(previewUrl.value); previewUrl.value=''; } fileType.value=''; isDemo.value=true; if(starMap && starMap.demo) starMap.loadData(starMap.demo); }
+    function gotoStar(){ view.value='star'; nextTick(()=>starMap && starMap.ensureInit()); }
 
     function scrollChat(){ nextTick(()=>{ if(chatBody.value) chatBody.value.scrollTop = chatBody.value.scrollHeight; }); }
 
@@ -552,39 +790,87 @@ createApp({
 
     function addQuick(msgObj){
       const acts=[['✓ 理解了吗？','我理解了这个知识点，请出一道题测测我，并等我回答后判对错。'],['📝 再出 1 个题','请出一道关于当前知识点的练习题，先不要公布答案。'],['🔁 换个讲法','能换一个更直观的方式（打比方、举例子）再讲一遍吗？'],['🔍 追问细化','请把核心概念和推导过程详细展开讲一遍。']];
+      if(msgObj.plain && msgObj.copyIndex!=null) msgObj.html += '<button class="copy-btn" data-copy="'+msgObj.copyIndex+'">📋 复制回答</button>';
       msgObj.html += '<div class="quick">'+acts.map(([label,txt])=>'<button class="qbtn" data-q="'+escapeHtml(txt)+'">'+label+'</button>').join('')+'</div>';
     }
     async function bindQuick(){
       await nextTick();
       const btns = chatBody.value ? chatBody.value.querySelectorAll('.qbtn[data-q]:not([data-bound])') : [];
       btns.forEach(b=>{ b.setAttribute('data-bound','1'); b.addEventListener('click',()=>{ const txt=b.getAttribute('data-q'); messages.value.push({role:'stu', text:txt}); sendToBackend(txt); }); });
+      const cbs = chatBody.value ? chatBody.value.querySelectorAll('.copy-btn[data-copy]:not([data-bound])') : [];
+      cbs.forEach(b=>{ b.setAttribute('data-bound','1'); b.addEventListener('click',()=>{ const m=messages.value[+b.getAttribute('data-copy')]; copyMessage(m&&m.plain||''); }); });
     }
+    async function copyMessage(text){
+      if(!text) return;
+      const okay = navigator.clipboard
+        ? (navigator.clipboard.writeText(text).then(()=>true).catch(()=>false))
+        : (()=>{ try{ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); return true; }catch(e){ return false; } })();
+      toast(await okay ? '已复制回答' : '复制失败，请手动复制','ok');
+     }
 
     async function sendToBackend(userText){
-      const msgObj = { role:'ai', html:'<span class="cursor"></span>' };
+      const topic = current.value;
+      if(knowledge.value.some(k => k.name === topic)){ mastery[topic] = (mastery[topic] || 0) + 1; persistMastery(); }
+      history.value.unshift({ text: userText, topic, ts: Date.now() });
+      if (history.value.length > 100) history.value.length = 100;
+      persistHistory();
+      sending.value = true;
+      const msgObj = { role:'ai', html:'<span class="typing"><i></i><i></i><i></i></span>' };
+      msgObj.copyIndex = messages.value.length;
       messages.value.push(msgObj);
       try {
         const sys = '你是「知屿 ZhiYu」教学智能体里的 AI 助教，正在讲解知识点「'+current.value+'」。请清晰、耐心、循序渐进地回答，可用 Markdown，数学公式用 LaTeX（$...$ 或 $$...$$）。';
         const data = await apiPost('/api/chat', { messages:[{role:'system',content:sys},{role:'user',content:userText}] });
         const reply = data.reply || '（后端未返回回答）';
+        msgObj.plain = reply;
         await typewriter(msgObj, reply);
         addQuick(msgObj); await bindQuick();
       } catch(e){ msgObj.html = '<span style="color:var(--red)">⚠️ '+escapeHtml(e.message||'调用失败')+'</span>'; }
+      sending.value = false;
       scrollChat();
     }
+    function onInputKey(e){
+      if(e.isComposing || e.keyCode===229) return;  // 中文输入法组合中按回车不发送
+      send();
+    }
+
+    /* 轻量 toast 提示 */
+    const toastWrap = ()=>{ let el=document.querySelector('.toast-wrap'); if(!el){ el=document.createElement('div'); el.className='toast-wrap'; document.body.appendChild(el); } return el; };
+    function toast(msg, type){
+      const wrap = toastWrap(); const t=document.createElement('div'); t.className='toast '+(type||'ok'); t.textContent=msg;
+      wrap.appendChild(t);
+      setTimeout(()=>{ t.style.transition='opacity .3s,transform .3s'; t.style.opacity='0'; t.style.transform='translateY(-10px)'; setTimeout(()=>t.remove(),320); }, 2200);
+    }
+
+    /* 语音输入（Web Speech API，不支持则提示） */
+    const listening = ref(false);
+    const voiceHint = ref('语音输入');
+    let recognition = null;
+    function toggleVoice(){
+      if(listening.value){ try{ recognition && recognition.stop(); }catch(e){} listening.value=false; return; }
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if(!SR){ toast('当前浏览器不支持语音识别','err'); return; }
+      if(!recognition){
+        recognition = new SR(); recognition.lang='zh-CN'; recognition.interimResults=false; recognition.maxAlternatives=1;
+        recognition.onresult=(ev)=>{ const r=ev.results[0][0].transcript; input.value = input.value ? input.value+' '+r : r; listening.value=false; voiceHint.value='点击开始语音'; };
+        recognition.onerror=()=>{ listening.value=false; voiceHint.value='点击开始语音'; toast('语音识别失败，请手动输入','err'); };
+        recognition.onend=()=>{ listening.value=false; voiceHint.value='点击开始语音'; };
+      }
+      try{ recognition.start(); listening.value=true; voiceHint.value='正在聆听…点击停止'; }catch(e){ toast('语音启动失败','err'); }
+    }
+
     function send(){
+      if(sending.value) return;
       const t = input.value.trim(); if(!t) return;
       messages.value.push({ role:'stu', text:t });
       input.value='';
       sendToBackend(t);
     }
-    function goChat(name){ current.value=name; drawer.value=null; view.value='chat'; if(messages.value.length===0) welcome(); }
-    function welcome(){
-      const msgObj={role:'ai',html:''};
-      messages.value.push(msgObj);
-      msgObj.html=renderMD('你好！我是 **知屿 AI 助教** 👋\n\n我们正在攻克「'+current.value+'」。任何疑问都可以直接问我。');
-      addQuick(msgObj); bindQuick();
-    }
+    function goChat(name){ current.value=name; drawer.value=null; view.value='chat'; }
+    // 回到欢迎卡片（清空消息即显示欢迎卡片）
+    function welcome(){ messages.value = []; }
+    function clearChat(){ welcome(); }
+    function quickAsk(q){ messages.value.push({ role:'stu', text:q.prompt }); sendToBackend(q.prompt); }
 
     function highlightPath(id){ starMap && starMap.highlight(id); }
     function openDrawer(node){ drawer.value = { name:node.name, summary:node.summary, keyIdea:node.keyIdea, example:node.example }; }
@@ -595,18 +881,18 @@ createApp({
         onCorner: (n,e)=>{ corner.value=n+' 节点 · '+e+' 关系'; },
         onPath: (p)=>{ path.value=p; },
       });
-      welcome();
     });
 
     // 切到星图视图时初始化（canvas 在 display:none 时尺寸为 0）
     watch(view, (v)=>{ if(v==='star') nextTick(()=>starMap && starMap.ensureInit()); });
 
     return {
-      view, levelLabel,
-      fileInput, dragging, uploadState, fileName, errorMsg, steps, stepIndex, logText, knowledge,
-      starCanvas, mapCard, tooltip, corner, path, drawer,
-      messages, input, chatBody, current,
-      pickFile, onFileChange, onDrop, resetUpload, send, goChat, highlightPath,
+      view, levelLabel, overview, recent, difficultyColor,
+      lastAsks, totalAsks, masteryList, maxMastery, totalMastery,
+      fileInput, dragging, uploadState, fileName, errorMsg, previewUrl, fileType, steps, stepIndex, logText, knowledge,
+      starCanvas, mapCard, tooltip, corner, path, drawer, isDemo,
+      messages, input, chatBody, current, sending, welcomeQuestions, listening, voiceHint,
+      pickFile, onFileChange, onDrop, resetUpload, gotoStar, send, goChat, highlightPath, clearChat, quickAsk, onInputKey, toggleVoice,
     };
   }
 }).mount('#app');
