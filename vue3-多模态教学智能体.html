@@ -287,6 +287,12 @@
   .wc-sub{font-size:13.5px;color:var(--text-dim);line-height:1.7;max-width:360px}
   .wc-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px}
 
+  /* 每日语录：今日清风一缕 */
+  .daily-quote{max-width:760px;margin:18px auto 0;padding:16px 22px;text-align:center;border-radius:16px;background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(16px)}
+  .dq-title{font-size:12px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px}
+  .dq-text{font-family:var(--font-display);font-size:15px;color:var(--text);line-height:1.7}
+  .dq-source{font-size:12px;color:var(--text-dim);margin-top:8px;font-style:italic}
+
   @media(max-width:920px){
     .app{flex-direction:column}
     .sidebar{width:100%;flex-direction:row;align-items:center;padding:10px 14px;border-right:none;border-bottom:1px solid var(--glass-border)}
@@ -487,6 +493,12 @@
               <button class="send-btn" :disabled="sending || !input.trim()" @click="send">{{ sending ? '思考中…' : '发送' }}</button>
             </div>
           </div>
+          <!-- 每日语录：今日清风一缕 -->
+          <div class="daily-quote">
+            <div class="dq-title">🍃 今日清风一缕</div>
+            <div class="dq-text">「{{ quote.text }}」</div>
+            <div class="dq-source">—— {{ quote.source }}</div>
+          </div>
         </div>
       </section>
     </main>
@@ -655,6 +667,38 @@ function createStarMap(canvas, tooltip, opts){
   canvas.addEventListener('pointerleave',()=>{ highlightId=null; tooltip.style.opacity='0'; });
 
   return { ensureInit, loadData, highlight, demo };
+}
+
+/* ================= 每日语录（今日清风一缕） ================= */
+const QUOTES = [
+  { text:'凡是过往，皆为序章。', source:'莎士比亚《暴风雨》' },
+  { text:'万物皆有裂痕，那是光照进来的地方。', source:'莱昂纳德·科恩' },
+  { text:'已识乾坤大，犹怜草木青。', source:'马一浮' },
+  { text:'人生天地间，忽如远行客。', source:'《古诗十九首》' },
+  { text:'我步入丛林，因为我希望活得有意义，而不是被生活所困。', source:'梭罗' },
+  { text:'优于别人并不高贵，真正的高贵是优于过去的自己。', source:'海明威《真实的高贵》' },
+  { text:'生活不可能像你想象得那么好，但也不会像你想象得那么糟。', source:'莫泊桑《一生》' },
+  { text:'我们读诗、写诗，并不是因为它们好玩，而是因为我们是人类的一分子。', source:'《死亡诗社》' },
+  { text:'梦想使生活得以忍受。', source:'《追梦赤子心》' },
+  { text:'山不过来，我就过去。', source:'《古兰经》' },
+  { text:'种一棵树最好的时间是十年前，其次是现在。', source:'非洲谚语' },
+  { text:'天空没有留下翅膀的痕迹，但我已飞过。', source:'泰戈尔《飞鸟集》' },
+  { text:'只有用水将心上的雾气淘洗干净，荣光才会照亮最初的梦想。', source:'加西亚·马尔克斯' },
+  { text:'过去都是假的，回忆是一条没有归途的路。', source:'《百年孤独》' },
+  { text:'所有大人都曾是小孩，虽然只有少数人记得。', source:'《小王子》' },
+  { text:'如果你想要造一艘船，先激发他们对海洋的渴望。', source:'《小王子》' },
+  { text:'岁月极美，在于它必然的流逝。', source:'三毛' },
+  { text:'所谓无底深渊，下去，也是前程万里。', source:'木心' },
+  { text:'我把荆棘当作铺满鲜花的原野，人间便没有什么能把我折磨。', source:'张贤亮《绿化树》' },
+  { text:'只有经历过地狱般的磨砺，才能练就创造天堂的力量。', source:'泰戈尔' },
+];
+// 根据日期确定性选取当日语录（同一天同一句，零点后自动换）
+function getTodayQuote(){
+  const d = new Date();
+  const key = d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+  let h = 5381;
+  for(let i=0;i<key.length;i++){ h = ((h << 5) + h + key.charCodeAt(i)) >>> 0; }
+  return QUOTES[h % QUOTES.length];
 }
 
 /* ================= Vue 应用 ================= */
@@ -948,6 +992,45 @@ createApp({
     function clearChat(){ chatReqSeq++; sending.value = false; welcome(); }  // 失效进行中请求 + 释放发送态 + 清空消息
     function quickAsk(q){ if(sending.value) return; messages.value.push({ uid:'m'+(++msgSeq), role:'stu', text:q.prompt }); sendToBackend(q.prompt); }
 
+    // 每日语录：今日清风一缕（当天从一言 API 拉取并缓存，跨天换新，失败回退本地）
+    const quote = ref(getTodayQuote());   // 先显示本地兜底，异步拉取到后替换
+    const QUOTE_CACHE_KEY = 'zhiyu:dailyQuote';
+    function todayKey(){ const d = new Date(); return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate(); }
+    function loadCachedQuote(){
+      try {
+        const s = localStorage.getItem(QUOTE_CACHE_KEY);
+        const o = s ? JSON.parse(s) : null;
+        if(o && o.date === todayKey() && o.text){ return { text:o.text, source:o.source }; }
+      } catch(e){}
+      return null;
+    }
+    async function fetchDailyQuote(){
+      // 当天已有缓存则直接用（避免重复拉取导致同一天句子变来变去）
+      const cached = loadCachedQuote();
+      if(cached){ quote.value = cached; return; }
+      // 拉取一言 API（限定文学/影视/哲学/诗词，尽量冷门有出处）
+      try {
+        const ctl = new AbortController();
+        const timer = setTimeout(()=>ctl.abort(), 6000);
+        const res = await fetch('https://v1.hitokoto.cn/?c=h&c=k&c=i', { signal: ctl.signal });
+        clearTimeout(timer);
+        const data = await res.json();
+        if(data && data.hitokoto){
+          const from = data.from || '';
+          const who = data.from_who || '';
+          const source = who ? (from ? from + ' · ' + who : who) : (from || '一言');
+          const q = { text: data.hitokoto, source: source };
+          quote.value = q;
+          try{ localStorage.setItem(QUOTE_CACHE_KEY, JSON.stringify({ text:q.text, source:q.source, date: todayKey() })); } catch(e){}
+        }
+      } catch(e){ /* 网络/解析失败：保持本地兜底 quote，不报错 */ }
+    }
+    function scheduleQuoteUpdate(){
+      const now = new Date();
+      const next = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0, 0, 1);
+      setTimeout(()=>{ quote.value = getTodayQuote(); fetchDailyQuote(); scheduleQuoteUpdate(); }, next - now);
+    }
+
     function highlightPath(id){ starMap && starMap.highlight(id); }
     function openDrawer(node){ drawer.value = { name:node.name, summary:node.summary, keyIdea:node.keyIdea, example:node.example }; }
 
@@ -957,6 +1040,8 @@ createApp({
         onCorner: (n,e)=>{ corner.value=n+' 节点 · '+e+' 关系'; },
         onPath: (p)=>{ path.value=p; },
       });
+      fetchDailyQuote();      // 首次加载拉取当天语录
+      scheduleQuoteUpdate();  // 零点自动更新每日语录
     });
 
     // 切到星图视图时初始化（canvas 在 display:none 时尺寸为 0）
@@ -967,7 +1052,7 @@ createApp({
       lastAsks, totalAsks, masteryList, maxMastery, totalMastery,
       fileInput, dragging, uploadState, fileName, errorMsg, previewUrl, fileType, steps, stepIndex, logText, knowledge,
       starCanvas, mapCard, tooltip, corner, path, drawer, isDemo,
-      messages, input, chatBody, current, sending, welcomeQuestions, listening, voiceHint,
+      messages, input, chatBody, current, sending, welcomeQuestions, listening, voiceHint, quote,
       pickFile, onFileChange, onDrop, resetUpload, gotoStar, send, goChat, highlightPath, clearChat, quickAsk, onInputKey, toggleVoice,
     };
   }

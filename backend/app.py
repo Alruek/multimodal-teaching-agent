@@ -204,7 +204,11 @@ async def call_deepseek(messages: List[Dict[str, str]], temperature: float = 0.5
 
 
 def extract_pdf_text(pdf_base64: str) -> str:
-    """用 PyMuPDF 从 PDF base64 提取文字。"""
+    """用 PyMuPDF 从 PDF base64 提取文字。
+
+    若 PDF 无文本层（如扫描版 / 图片型 PDF），自动降级为「逐页渲染成图片 -> OCR」
+    （离线 RapidOCR 优先，腾讯云 OCR 兜底，复用 ocr_extract 的双链路）。
+    """
     # 先校验 base64 合法性
     try:
         pdf_bytes = base64.b64decode(pdf_base64, validate=True)
@@ -221,29 +225,111 @@ def extract_pdf_text(pdf_base64: str) -> str:
     try:
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
         text = "\n".join(page.get_text() for page in doc)
-        doc.close()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"PDF 解析失败：{e}")
-    if not text.strip():
-        raise HTTPException(status_code=422, detail="PDF 未提取到文字（可能是扫描版 PDF，请先 OCR 或换文本型 PDF）。")
-    return text
+
+    # 有文本层：直接返回
+    if text.strip():
+        doc.close()
+        return text
+
+    # ---- 无文本层：扫描版 / 图片型 PDF → 提取各页内嵌图（原分辨率）后走 OCR ----
+    logger.warning("PDF 无文本层（%d 页），提取内嵌图后逐页 OCR …", doc.page_count)
+    ocr_pages = []
+    try:
+        for i, page in enumerate(doc):
+            page_text = _ocr_pdf_page(doc, page)
+            if page_text:
+                ocr_pages.append(f"【第 {i + 1} 页】\n{page_text}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("PDF 逐页 OCR 中途失败：%s", e)
+    finally:
+        doc.close()
+
+    if not ocr_pages:
+        # 文本层与 OCR 均未拿到内容（可能 OCR 未接入，或扫描质量过低）
+        raise HTTPException(
+            status_code=422,
+            detail="PDF 未提取到文字且自动 OCR 未识别到内容（扫描质量过低或 OCR 未配置腾讯云凭证）。",
+        )
+    return "\n\n".join(ocr_pages)
+
+
+def _ocr_pdf_page(doc, page) -> str:
+    """对单个 PDF 页做 OCR：依次识别页内“内容级”嵌入图（原分辨率），直到拿到文字。
+
+    - 用 page.get_images(full=True) 拿到本页引用的所有图 (xref, width, height)；
+    - 按 xref 去重（同一张背景/水印图在相邻页会重复出现，避免重复识别）；
+    - 按像素面积从大到小尝试识别，跳过明显是背景/小位图的图；
+    - 单页最多扫描 4 张大图，成本与耗时上限可控。
+    """
+    try:
+        imgs = page.get_images(full=True)
+    except Exception:
+        imgs = []
+    if not imgs:
+        return ""
+
+    # 收集 (xref, w, h)，按 xref 去重（同 xref 只取一次，尺寸以引用处最大为准）
+    seen: dict = {}
+    for it in imgs:
+        xref = it[0]
+        w, h = it[2], it[3]
+        prev = seen.get(xref)
+        if prev is None or w * h > prev[0] * prev[1]:
+            seen[xref] = (w, h)
+    if not seen:
+        return ""
+
+    # 页面面积（pt），作为内容图阈值参考（与像素面积做相对比较）
+    pr = page.rect
+    page_area = pr.width * pr.height
+
+    # 面积降序（内容大图优先被识别，水印/小图靠后）
+    ordered = sorted(seen.items(), key=lambda kv: kv[1][0] * kv[1][1], reverse=True)
+
+    collected = []
+    for xref, (w, h) in ordered[:4]:
+        # 小于页面面积 80%（像素级）的图视为背景/装饰，跳过
+        if w * h < page_area * 0.8:
+            continue
+        try:
+            raw = doc.extract_image(xref)
+            img_bytes = raw.get("image")
+        except Exception:
+            continue
+        if not img_bytes:
+            continue
+        page_text = ocr_extract(base64.b64encode(img_bytes).decode())
+        if page_text:
+            collected.append(page_text)
+            continue  # 已拿到本页文字，不再识别更多图（控制成本）
+    return ("\n".join(collected)).strip()
 
 
 def ocr_extract(image_base64: str) -> Optional[str]:
-    """OCR 文字提取。
+    """OCR 文字提取 —— 本地离线 OCR 优先，腾讯云 OCR 兜底。
 
-    优先使用本地离线 OCR（RapidOCR，onnxruntime 版）：
-      - 无需云账号 / API Key，评审点击即用，不依赖外网第三方 OCR 服务；
-      - 中文识别效果好，适合课件 / 讲义 / 扫描件。
-    若客户端未安装 RapidOCR 依赖，则返回 None（前端提示「OCR 待接入」，不报错）。
+    优先级：
+      1. RapidOCR（onnxruntime，本地离线、免费、无需账号）—— 中文识别效果好；
+      2. 腾讯云「通用印刷体识别」—— 当本地离线 OCR 识别不出文字 / 未安装 / 出错时兜底。
+
+    兜底条件（任一命中即降级到腾讯云）：
+      - RapidOCR 返回空文本（识别不出字）；
+      - RapidOCR 依赖缺失（ImportError）；
+      - RapidOCR 运行异常（非 4xx/5xx 编码类错误）。
+
+    若两条链路都不可用/无凭证，则返回 None（前端提示「OCR 待接入」，不报错）。
     """
-    # 校验 base64 合法性
+    # 校验 base64 合法性（两条链路都不需要重复校验）
     try:
         image_bytes = base64.b64decode(image_base64, validate=True)
     except Exception:
         raise HTTPException(status_code=400, detail="image_base64 不是合法的 base64 编码。")
 
-    # 本地离线 OCR：RapidOCR（onnxruntime）
+    # ---- 第一优先：本地离线 OCR（RapidOCR）----
     try:
         import numpy as np
         import cv2
@@ -252,6 +338,7 @@ def ocr_extract(image_base64: str) -> Optional[str]:
         img_array = np.frombuffer(image_bytes, np.uint8)
         img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
         if img is None:
+            # 无效图片：本地与云端都无法解码，直接拒绝，不浪费云端调用
             raise HTTPException(
                 status_code=422, detail="无法解码图片，请上传有效的 JPG/PNG 图片。"
             )
@@ -260,21 +347,53 @@ def ocr_extract(image_base64: str) -> Optional[str]:
         result, _ = engine(img)
 
         if not result:
-            # 图中没有识别到文字：返回空字符串（区别于「待接入」的 None）
-            return ""
+            # 离线识别不出字（可能是特殊字体 / 复杂背景）→ 交给腾讯云兜底
+            logger.info("RapidOCR 未识别到文字，降级到腾讯云 OCR 兜底。")
+            return _tencent_fallback(image_bytes, image_base64)
 
         # result 结构：[ [box, text, score], ... ]，取每个元素的 text（第 2 项）
-        lines = [item[1] for item in result]
-        return "\n".join(lines)
+        text = "\n".join(item[1] for item in result).strip()
+        if not text:
+            # 识别出空串 → 仍交给腾讯云兜底
+            logger.info("RapidOCR 识别结果为空，降级到腾讯云 OCR 兜底。")
+            return _tencent_fallback(image_bytes, image_base64)
+        return text
 
     except ImportError:
-        # 客户端未安装 RapidOCR 相关依赖
-        logger.warning("未安装 RapidOCR，OCR 待接入。请执行 pip install rapidocr-onnxruntime opencv-python-headless numpy")
-        return None
+        # 未安装 RapidOCR 相关依赖 → 腾讯云兜底
+        logger.warning("未安装 RapidOCR，尝试腾讯云 OCR 兜底…")
+        return _tencent_fallback(image_bytes, image_base64)
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("OCR 识别失败：%s", e)
+        # 其它非预期错误（模型加载失败等）→ 腾讯云兜底，而非直接失败
+        logger.warning("RapidOCR 运行异常（%s），尝试腾讯云 OCR 兜底…", e)
+        return _tencent_fallback(image_bytes, image_base64)
+
+
+def _tencent_fallback(image_bytes: bytes, image_base64: str) -> Optional[str]:
+    """腾讯云 OCR 兜底：未知时返回 None（前端提示「OCR 待接入」）。"""
+    if not image_bytes:
+        raise HTTPException(status_code=422, detail="图片内容为空。")
+    try:
+        # 延迟导入：避免 SDK 未安装时顶部 import 直接崩溃
+        from ocr_tencent import extract_text_from_image_base64
+        return extract_text_from_image_base64(image_base64)
+    except (ImportError, ModuleNotFoundError):
+        logger.warning("未安装 tencentcloud-sdk-python-ocr，OCR 兜底不可用。")
+        return None
+    except RuntimeError as e:
+        # 未配置腾讯云凭证 → 明确提示
+        logger.warning("腾讯云 OCR 兜底不可用：%s", e)
+        return None
+    except Exception as e:
+        # 图内没有可识别文字（TencentCloudSDKException FailedOperation.ImageNoText）→
+        # 视为“空结果”而非错误，交给上层决定（PDF 逐页时跳过该页）。
+        msg = str(e)
+        if "ImageNoText" in msg or "未检测到文本" in msg:
+            logger.info("腾讯云 OCR 判定图内无文本，按空结果处理。")
+            return ""
+        logger.error("腾讯云 OCR 兜底识别失败：%s", e)
         raise HTTPException(status_code=502, detail=f"OCR 识别失败：{e}")
 
 
