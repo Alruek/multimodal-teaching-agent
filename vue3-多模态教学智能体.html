@@ -475,7 +475,7 @@
                   <button class="qbtn" v-for="(q,i) in welcomeQuestions" :key="i" @click="quickAsk(q)">{{ q.label }}</button>
                 </div>
               </div>
-              <div class="msg" v-for="(m,i) in messages" :key="i" :class="m.role">
+              <div class="msg" v-for="(m,i) in messages" :key="m.uid" :class="m.role">
                 <div class="avatar">{{ m.role==='ai' ? '师' : '我' }}</div>
                 <div class="bubble" v-if="m.role==='ai'" v-html="m.html"></div>
                 <div class="bubble" v-else>{{ m.text }}</div>
@@ -689,12 +689,16 @@ createApp({
 
     // 答疑
     const messages = ref([]);
+    let msgSeq = 0;   // 消息稳定唯一 id 生成器（用 uid 做 v-for key / 复制定位，避免索引 key 重建丢失状态）
     const input = ref('');
     const chatBody = ref(null);
     const current = ref('知识答疑');
 
     // 适配后的知识点（nodes）
     const knowledge = ref([]);
+
+    // 已解析讲义的整体主题/要点（用于答疑时给 AI 提供资料上下文）
+    const materialSummary = ref('');
 
     // 侧边栏：难度配色 + 学习概览 + 最近知识点
     const difficultyColor = { easy:'#34d399', medium:'#22d3ee', hard:'#ff6b9d' };
@@ -738,6 +742,7 @@ createApp({
 
     // 答疑：发送状态 + 欢迎快捷提问
     const sending = ref(false);
+    let chatReqSeq = 0;   // 请求序号：清空对话时 +1 使进行中的请求失效，避免竞态
     const welcomeQuestions = [
       { label:'🔍 举个例子', prompt:'能举一个具体的例子解释这个知识点吗？' },
       { label:'📝 出个题', prompt:'请出一道关于当前知识点的练习题，先不要公布答案。' },
@@ -775,15 +780,16 @@ createApp({
         if(data.ocr_status === 'pending'){ uploadState.value='error'; errorMsg.value=(data.message||'OCR 待接入')+'（图片识别暂未接入，请上传 .txt/.md 文本文件）'; return; }
         const adapted = adaptKnowledge(data);
         knowledge.value = adapted.nodes;
+        materialSummary.value = (adapted.subject || '').trim();
         uploadState.value='success';
         isDemo.value = false;
         starMap && starMap.loadData(adapted);  // 填充星图（不自动跳转，用户在成功卡片手动前往）
       } catch(e){ uploadState.value='error'; errorMsg.value=e.message||'解析失败'; toast(e.message||'解析失败','err'); }
     }
-    function resetUpload(){ uploadState.value='empty'; knowledge.value=[]; stepIndex.value=-1; if(previewUrl.value){ URL.revokeObjectURL(previewUrl.value); previewUrl.value=''; } fileType.value=''; isDemo.value=true; if(starMap && starMap.demo) starMap.loadData(starMap.demo); }
+    function resetUpload(){ uploadState.value='empty'; knowledge.value=[]; materialSummary.value=''; stepIndex.value=-1; if(previewUrl.value){ URL.revokeObjectURL(previewUrl.value); previewUrl.value=''; } fileType.value=''; isDemo.value=true; if(starMap && starMap.demo) starMap.loadData(starMap.demo); }
     function gotoStar(){ view.value='star'; nextTick(()=>starMap && starMap.ensureInit()); }
 
-    function scrollChat(){ nextTick(()=>{ if(chatBody.value) chatBody.value.scrollTop = chatBody.value.scrollHeight; }); }
+    function scrollChat(){ nextTick(()=>{ const el=chatBody.value; if(!el) return; const near = el.scrollHeight - el.scrollTop - el.clientHeight < 90; if(near) el.scrollTop = el.scrollHeight; }); }
 
     async function typewriter(msgObj, fullMd){
       const reduce = (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) || fullMd.length > 6000;
@@ -801,15 +807,21 @@ createApp({
 
     function addQuick(msgObj){
       const acts=[['✓ 理解了吗？','我理解了这个知识点，请出一道题测测我，并等我回答后判对错。'],['📝 再出 1 个题','请出一道关于当前知识点的练习题，先不要公布答案。'],['🔁 换个讲法','能换一个更直观的方式（打比方、举例子）再讲一遍吗？'],['🔍 追问细化','请把核心概念和推导过程详细展开讲一遍。']];
-      if(msgObj.plain && msgObj.copyIndex!=null) msgObj.html += '<button class="copy-btn" data-copy="'+msgObj.copyIndex+'">📋 复制回答</button>';
+      if(msgObj.plain && msgObj.uid) msgObj.html += '<button class="copy-btn" data-copy="'+msgObj.uid+'">📋 复制回答</button>';
       msgObj.html += '<div class="quick">'+acts.map(([label,txt])=>'<button class="qbtn" data-q="'+escapeHtml(txt)+'">'+label+'</button>').join('')+'</div>';
     }
+    let quickBound = false;
     async function bindQuick(){
-      await nextTick();
-      const btns = chatBody.value ? chatBody.value.querySelectorAll('.qbtn[data-q]:not([data-bound])') : [];
-      btns.forEach(b=>{ b.setAttribute('data-bound','1'); b.addEventListener('click',()=>{ const txt=b.getAttribute('data-q'); messages.value.push({role:'stu', text:txt}); sendToBackend(txt); }); });
-      const cbs = chatBody.value ? chatBody.value.querySelectorAll('.copy-btn[data-copy]:not([data-bound])') : [];
-      cbs.forEach(b=>{ b.setAttribute('data-bound','1'); b.addEventListener('click',()=>{ const m=messages.value[+b.getAttribute('data-copy')]; copyMessage(m&&m.plain||''); }); });
+      if(quickBound || !chatBody.value) return;   // 只挂一次：事件委托，规避 v-re-render 丢失子节点监听
+      quickBound = true;
+      const scope = chatBody.value;
+      scope.addEventListener('click', (ev)=>{
+        const t = ev.target && ev.target.closest ? ev.target : null;
+        const qb = t && t.closest('.qbtn[data-q]');
+        if(qb){ if(sending.value) return; const txt = qb.getAttribute('data-q'); messages.value.push({uid:'m'+(++msgSeq), role:'stu', text:txt}); sendToBackend(txt); return; }
+        const cb = t && t.closest('.copy-btn[data-copy]');
+        if(cb){ const _id = cb.getAttribute('data-copy'); const m = messages.value.find(u=>u.uid===_id); copyMessage(m && m.plain || ''); }
+      });
     }
     async function copyMessage(text){
       if(!text) return;
@@ -820,18 +832,26 @@ createApp({
      }
 
     async function sendToBackend(userText){
+      if(sending.value) return;                  // 兜底：请求进行中拒绝并发（覆盖所有入口路径）
+      const reqId = ++chatReqSeq;                // 当前请求序号（清空对话会 +1 使其失效）
       const topic = current.value;
       if(knowledge.value.some(k => k.name === topic)){ mastery[topic] = (mastery[topic] || 0) + 1; persistMastery(); }
       history.value.unshift({ text: userText, topic, ts: Date.now() });
       if (history.value.length > 100) history.value.length = 100;
       persistHistory();
       sending.value = true;
-      const msgObj = { role:'ai', html:'<span class="typing"><i></i><i></i><i></i></span>' };
-      msgObj.copyIndex = messages.value.length;
-      messages.value.push(msgObj);
+      const idx = messages.value.length;
+      messages.value.push({ uid:'m'+(++msgSeq), role:'ai', html:'<span class="typing"><i></i><i></i><i></i></span>' });
+      const msgObj = messages.value[idx];   // 取响应式代理（而非 push 时的原始对象），确保 html 逐步更新能被模板实时感知
       scrollChat();
       try {
-        const sys = '你是「知屿 ZhiYu」教学智能体里的 AI 助教，正在讲解知识点「'+current.value+'」。请清晰、耐心、循序渐进地回答，可用 Markdown，数学公式用 LaTeX（$...$ 或 $$...$$）。';
+        const node = knowledge.value.find(k => k.name === topic);
+        const mat = (materialSummary.value || '').trim();
+        let parts = ['你是「知屿 ZhiYu」教学智能体里的 AI 助教。'];
+        if (mat) parts.push('当前正在演示的教材资料要点：' + mat);
+        if (node && node.name){ parts.push('正在讲解知识点「' + node.name + '」。本知识点要点：' + (node.keyIdea || node.summary || '（未提供）') + (node.example ? '；参考示例：' + node.example : '') + (node.prereq ? '；前置知识：' + node.prereq : '')); }
+        else parts.push('当前话题：「' + topic + '」。');
+        const sys = parts.join('\n') + '\n请优先结合上述教材资料内容讲解，避免泛泛而谈；可适当补充教材之外的例子帮助理解，但核心概念以资料为准。回答清晰、耐心、循序渐进，可用 Markdown，数学公式用 LaTeX（$...$ 或 $$...$$）。';
         const hist = [];
         for(let i=0;i<messages.value.length;i++){
           const m = messages.value[i];
@@ -841,13 +861,15 @@ createApp({
         }
         const payload = { messages:[{ role:'system', content:sys }, ...hist.slice(-24)] };
         const data = await apiPost('/api/chat', payload);
+        if(reqId !== chatReqSeq) return;          // 已被清空/新请求取代，丢弃本次结果
         const reply = data.reply || '（后端未返回回答）';
         msgObj.plain = reply;
         sending.value = false;                     // 收到回复即释放，不等打字机打完
         await typewriter(msgObj, reply);
+        if(reqId !== chatReqSeq) return;          // 打字机期间被清空，丢弃后续
         addQuick(msgObj); await bindQuick();
-      } catch(e){ msgObj.html = '<span style="color:var(--red)">⚠️ '+escapeHtml(e.message||'调用失败')+'</span>'; }
-      finally{ sending.value = false; scrollChat(); }
+      } catch(e){ if(reqId !== chatReqSeq) return; msgObj.html = '<span style="color:var(--red)">⚠️ '+escapeHtml(e.message||'调用失败')+'</span>'; }
+      finally{ if(reqId === chatReqSeq){ sending.value = false; scrollChat(); } }
     }
     function onInputKey(e){
       if(e.isComposing || e.keyCode===229) return;  // 中文输入法组合中按回车不发送
@@ -862,35 +884,69 @@ createApp({
       setTimeout(()=>{ t.style.transition='opacity .3s,transform .3s'; t.style.opacity='0'; t.style.transform='translateY(-10px)'; setTimeout(()=>t.remove(),320); }, 2200);
     }
 
-    /* 语音输入（Web Speech API，不支持则提示） */
+    /* 语音输入（Web Speech API，不支持/无权限/无语音时分别提示） */
     const listening = ref(false);
     const voiceHint = ref('语音输入');
     let recognition = null;
+    function stopVoice(){
+      try{ if(recognition) recognition.stop(); }catch(e){}
+      listening.value = false;
+      voiceHint.value = '点击开始语音';
+    }
     function toggleVoice(){
-      if(listening.value){ try{ recognition && recognition.stop(); }catch(e){} listening.value=false; return; }
+      // 正在聆听 → 停止
+      if(listening.value){ stopVoice(); return; }
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if(!SR){ toast('当前浏览器不支持语音识别','err'); return; }
+      if(!SR){ toast('当前浏览器不支持语音识别（请用 Chrome/Edge）','err'); return; }
       if(!recognition){
-        recognition = new SR(); recognition.lang='zh-CN'; recognition.interimResults=false; recognition.maxAlternatives=1;
-        recognition.onresult=(ev)=>{ const r=ev.results[0][0].transcript; input.value = input.value ? input.value+' '+r : r; listening.value=false; voiceHint.value='点击开始语音'; };
-        recognition.onerror=()=>{ listening.value=false; voiceHint.value='点击开始语音'; toast('语音识别失败，请手动输入','err'); };
-        recognition.onend=()=>{ listening.value=false; voiceHint.value='点击开始语音'; };
+        recognition = new SR();
+        recognition.lang = 'zh-CN';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        recognition.onresult = (ev)=>{
+          // 防御空结果，避免 ev.results[0][0] 为 undefined 报错
+          const first = ev.results && ev.results[0] && ev.results[0][0];
+          const r = first ? first.transcript : '';
+          if(r){ input.value = input.value ? input.value + ' ' + r : r; }
+          stopVoice();  // 拿到结果即停止，避免实例未结束导致下次 start 报 already-started
+        };
+        recognition.onerror = (ev)=>{
+          const err = ev && ev.error;
+          const msg = err==='not-allowed' ? '麦克风权限被拒绝，请在地址栏允许访问麦克风'
+                    : err==='no-speech' ? '没有检测到语音，请靠近麦克风再试'
+                    : err==='audio-capture' ? '未检测到麦克风设备'
+                    : err==='network' ? '语音服务网络异常'
+                    : '语音识别失败，请手动输入';
+          toast(msg, 'err');
+          stopVoice();
+        };
+        recognition.onend = ()=>{ stopVoice(); };
       }
-      try{ recognition.start(); listening.value=true; voiceHint.value='正在聆听…点击停止'; }catch(e){ toast('语音启动失败','err'); }
+      try{
+        recognition.start();
+        listening.value = true;
+        voiceHint.value = '正在聆听…点击停止';
+      }catch(e){
+        // start 抛错（如上次实例状态未清理），重置实例供下次重建
+        try{ if(recognition && recognition.abort) recognition.abort(); }catch(_){}
+        recognition = null;
+        toast('语音启动失败，请重试', 'err');
+      }
     }
 
     function send(){
       if(sending.value) return;
       const t = input.value.trim(); if(!t) return;
-      messages.value.push({ role:'stu', text:t });
+      messages.value.push({ uid:'m'+(++msgSeq), role:'stu', text:t });
       input.value='';
       sendToBackend(t);
     }
     function goChat(name){ current.value=name; drawer.value=null; view.value='chat'; }
     // 回到欢迎卡片（清空消息即显示欢迎卡片）
     function welcome(){ messages.value = []; }
-    function clearChat(){ welcome(); }
-    function quickAsk(q){ messages.value.push({ role:'stu', text:q.prompt }); sendToBackend(q.prompt); }
+    function clearChat(){ chatReqSeq++; sending.value = false; welcome(); }  // 失效进行中请求 + 释放发送态 + 清空消息
+    function quickAsk(q){ if(sending.value) return; messages.value.push({ uid:'m'+(++msgSeq), role:'stu', text:q.prompt }); sendToBackend(q.prompt); }
 
     function highlightPath(id){ starMap && starMap.highlight(id); }
     function openDrawer(node){ drawer.value = { name:node.name, summary:node.summary, keyIdea:node.keyIdea, example:node.example }; }
