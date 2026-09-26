@@ -166,9 +166,9 @@
 
   /* 星空图 */
   .main-grid{display:grid;grid-template-columns:1fr 280px;gap:16px}
-  .map-card{position:relative;border-radius:20px;background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(20px);overflow:hidden;min-height:560px;height:calc(100vh - 220px)}
+  .map-card{position:relative;border-radius:20px;background:radial-gradient(120% 140% at 20% 0%,rgba(88,66,180,.55),transparent 55%),radial-gradient(160% 130% at 100% 100%,rgba(0,229,195,.18),transparent 50%),linear-gradient(160deg,#0b1026 0%,#0a0f22 45%,#0d0a22 100%);box-shadow:inset 0 0 120px rgba(0,0,0,.55),0 20px 60px rgba(0,0,0,.35);border:1px solid rgba(140,160,255,.16);overflow:hidden;min-height:560px;height:calc(100vh - 220px)}
   .map-card canvas{display:block;width:100%;height:100%;cursor:grab}
-  .map-corner{position:absolute;top:14px;left:16px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);pointer-events:none}
+  .map-corner{position:absolute;top:16px;right:18px;font-family:var(--font-mono);font-size:11px;color:rgba(200,220,255,.82);pointer-events:none;letter-spacing:.4px;background:linear-gradient(135deg,rgba(0,229,195,.12),rgba(34,211,238,.10));border:1px solid rgba(0,229,195,.22);padding:4px 10px;border-radius:100px}
   .path-card{border-radius:20px;background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(20px);padding:20px 16px;display:flex;flex-direction:column;gap:4px;max-height:calc(100vh - 220px);overflow-y:auto}
   .path-title{font-family:var(--font-display);font-weight:700;font-size:15px;margin-bottom:4px}
   .path-sub{font-size:12px;color:var(--text-dim);margin-bottom:12px;line-height:1.6}
@@ -199,7 +199,13 @@
   /* 答疑 */
   .chat-panel{position:relative;border-radius:22px;background:rgba(11,16,32,.7);border:1px solid var(--glass-border);backdrop-filter:blur(22px);overflow:hidden;display:flex;flex-direction:column;height:calc(100vh - 200px);min-height:520px}
   .chat-head{padding:15px 20px;border-bottom:1px solid var(--glass-border);display:flex;align-items:center;gap:12px}
+  .teacher-avatar{flex-shrink:0;display:grid;place-items:center;border-radius:50%;position:relative;overflow:hidden;
+    background:radial-gradient(circle at 30% 25%,#34f2e0,#0fb9d9 45%,#4b4fd6 100%);
+    box-shadow:0 0 0 2px rgba(0,229,195,.55),0 0 18px rgba(34,211,238,.55),inset 0 -4px 10px rgba(5,10,30,.45)}
+  .teacher-avatar::after{content:"";position:absolute;left:8%;right:8%;top:6%;height:32%;border-radius:50%;background:rgba(255,255,255,.38);filter:blur(2px);opacity:.55}
+  .teacher-avatar svg{position:relative;width:76%;height:76%;z-index:1}
   .chat-head .dot{width:10px;height:10px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+  .chat-head .teacher-avatar{width:40px;height:40px}
   .chat-head .k-name{font-family:var(--font-display);font-weight:700;font-size:16px}
   .chat-head .k-sub{font-size:12px;color:var(--text-dim);margin-top:2px}
   .chat-body{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px}
@@ -211,6 +217,7 @@
   .msg.stu{align-self:flex-end;flex-direction:row-reverse}
   .msg .avatar{width:31px;height:31px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;font-size:13px;font-weight:600}
   .msg.ai .avatar{background:linear-gradient(135deg,var(--accent),var(--cyan))}
+  .msg.ai .teacher-avatar{width:34px;height:34px;background:radial-gradient(circle at 30% 25%,#34f2e0,#0fb9d9 45%,#4b4fd6 100%)}
   .msg.stu .avatar{background:linear-gradient(135deg,var(--pink),var(--violet))}
   .msg .bubble{padding:12px 16px;border-radius:16px;font-size:14px;line-height:1.75;min-width:0}
   .msg.ai .bubble{background:rgba(255,255,255,.06);border:1px solid var(--glass-border);border-top-left-radius:4px}
@@ -254,9 +261,9 @@
   .btn-soft.accent:hover{box-shadow:0 6px 22px rgba(0,229,195,.22);background:linear-gradient(135deg,rgba(0,229,195,.22),rgba(34,211,238,.18))}
 
   /* 星图：示例数据标识 + 空态覆盖 */
-  .star-tag{position:absolute;top:14px;left:16px;display:none;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);padding:5px 11px;border-radius:100px;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);pointer-events:none}
+  .star-tag{position:absolute;top:16px;left:18px;display:none;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;color:var(--text);letter-spacing:.3px;padding:5px 12px;border-radius:100px;background:linear-gradient(135deg,rgba(0,229,195,.14),rgba(34,211,238,.10));border:1px solid rgba(0,229,195,.32);box-shadow:0 0 18px rgba(0,229,195,.25),inset 0 0 12px rgba(0,229,195,.08);pointer-events:none}
   .star-tag.show{display:inline-flex}
-  .star-empty{position:absolute;top:44px;left:0;right:0;text-align:center;color:var(--text-dim);font-size:13.5px;padding:20px;line-height:1.8;display:block;pointer-events:none}
+  .star-empty{position:absolute;top:56px;left:0;right:0;text-align:center;color:var(--text-dim);font-size:13.5px;padding:20px;line-height:1.8;display:block;pointer-events:none;text-shadow:0 0 14px rgba(0,0,0,.8)}
   .star-empty b{color:var(--accent)}
 
   /* 答疑：复制按钮 + 语音 */
@@ -373,7 +380,7 @@
           <div class="recent-empty" v-else>解析后，「最近知识点」会出现在这里<br><b @click="view='workbench'">去解析一份讲义 →</b></div>
         </div>
       </div>
-      <div class="side-foot"><span class="dot"></span><span>AI 助教在线 · 同源后端</span></div>
+      <div class="side-foot"><span class="dot"></span><span>小屿老师在线 · 同源后端</span></div>
     </aside>
 
     <!-- 主内容 -->
@@ -492,25 +499,26 @@
       <section class="view" :class="{active: view==='chat'}">
         <div class="inner">
           <div class="chat-panel">
-            <div class="chat-head"><span class="dot"></span><div><div class="k-name">{{ current }}</div><div class="k-sub">你的 AI 助教 · 同源后端真实回答</div></div><button class="clear-btn" @click="clearChat">🗑 清空对话</button></div>
+            <div class="chat-head"><span class="teacher-avatar"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="38" r="15" fill="#fff"/><path d="M32 20 15 24l17 8 17-8z" fill="#0E7490"/><path d="M32 19.5 22.25 24.5l9.75 4.6 9.75-4.6z" fill="#22D3EE" opacity=".55"/><rect x="24" y="30.2" width="16" height="3.4" rx="1.6" fill="#0B7490"/><circle cx="32" cy="24.6" r="1.7" fill="#FFB84D"/><path d="M32 26.3l3.2 3.6h-6.4z" fill="#FFB84D"/><path d="M26.5 41.5a5.5 5.5 0 0 0 11 0" stroke="#0B3A4E" stroke-width="1.9" fill="none" stroke-linecap="round"/><circle cx="24.6" cy="37.8" r="1.5" fill="#FF6B9D" opacity=".45"/><circle cx="39.4" cy="37.8" r="1.5" fill="#FF6B9D" opacity=".45"/><circle cx="48" cy="27" r="1.3" fill="#fff" opacity=".85"/><circle cx="17" cy="31" r="1" fill="#fff" opacity=".6"/></svg></span><div><div class="k-name">{{ current }}</div><div class="k-sub">小屿老师 · 同源后端真实回答</div></div><button class="clear-btn" @click="clearChat">🗑 清空对话</button></div>
             <div class="chat-body" ref="chatBody">
               <div class="welcome-card" v-if="messages.length===0">
-                <div class="wc-emoji">👋</div>
-                <div class="wc-title">你好，我是知屿 AI 助教</div>
+                <div class="wc-emoji"><span class="teacher-avatar" style="width:66px;height:66px;display:inline-grid"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="38" r="15" fill="#fff"/><path d="M32 20 15 24l17 8 17-8z" fill="#0E7490"/><path d="M32 19.5 22.25 24.5l9.75 4.6 9.75-4.6z" fill="#22D3EE" opacity=".55"/><rect x="24" y="30.2" width="16" height="3.4" rx="1.6" fill="#0B7490"/><circle cx="32" cy="24.6" r="1.7" fill="#FFB84D"/><path d="M32 26.3l3.2 3.6h-6.4z" fill="#FFB84D"/><path d="M26.5 41.5a5.5 5.5 0 0 0 11 0" stroke="#0B3A4E" stroke-width="1.9" fill="none" stroke-linecap="round"/><circle cx="24.6" cy="37.8" r="1.5" fill="#FF6B9D" opacity=".45"/><circle cx="39.4" cy="37.8" r="1.5" fill="#FF6B9D" opacity=".45"/><circle cx="48" cy="27" r="1.3" fill="#fff" opacity=".85"/><circle cx="17" cy="31" r="1" fill="#fff" opacity=".6"/></svg></span></div>
+                <div class="wc-title">你好，我是小屿老师</div>
                 <div class="wc-sub">针对「{{ current }}」，直接输入问题开始对话，或点下方快捷提问。</div>
                 <div class="wc-actions">
                   <button class="qbtn" v-for="(q,i) in welcomeQuestions" :key="i" @click="quickAsk(q)">{{ q.label }}</button>
                 </div>
               </div>
               <div class="msg" v-for="(m,i) in messages" :key="m.uid" :class="m.role">
-                <div class="avatar">{{ m.role==='ai' ? '师' : '我' }}</div>
+                 <div class="avatar" v-if="m.role==='stu'">我</div>
+                  <div class="teacher-avatar" v-else><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="38" r="15" fill="#fff"/><path d="M32 20 15 24l17 8 17-8z" fill="#0E7490"/><path d="M32 19.5 22.25 24.5l9.75 4.6 9.75-4.6z" fill="#22D3EE" opacity=".55"/><rect x="24" y="30.2" width="16" height="3.4" rx="1.6" fill="#0B7490"/><circle cx="32" cy="24.6" r="1.7" fill="#FFB84D"/><path d="M32 26.3l3.2 3.6h-6.4z" fill="#FFB84D"/><path d="M26.5 41.5a5.5 5.5 0 0 0 11 0" stroke="#0B3A4E" stroke-width="1.9" fill="none" stroke-linecap="round"/><circle cx="24.6" cy="37.8" r="1.5" fill="#FF6B9D" opacity=".45"/><circle cx="39.4" cy="37.8" r="1.5" fill="#FF6B9D" opacity=".45"/><circle cx="48" cy="27" r="1.3" fill="#fff" opacity=".85"/><circle cx="17" cy="31" r="1" fill="#fff" opacity=".6"/></svg></div>
                 <div class="bubble" v-if="m.role==='ai'" v-html="m.html"></div>
                 <div class="bubble" v-else>{{ m.text }}</div>
               </div>
             </div>
             <div class="chat-input">
               <button class="mic-btn" :class="{listening: listening}" :title="voiceHint" @click="toggleVoice">🎙️</button>
-              <textarea v-model="input" ref="chatInput" placeholder="向 AI 助教提问…（Enter 发送）" @keydown.enter.exact.prevent="onInputKey"></textarea>
+              <textarea v-model="input" ref="chatInput" placeholder="向小屿老师提问…（Enter 发送）" @keydown.enter.exact.prevent="onInputKey"></textarea>
               <button class="send-btn" :disabled="sending || !input.trim()" @click="send">{{ sending ? '思考中…' : '发送' }}</button>
             </div>
           </div>
@@ -536,7 +544,7 @@
       <div class="d-section" v-if="drawer.example">例证</div>
       <div class="d-example" v-if="drawer.example">{{ drawer.example }}</div>
     </template>
-    <button class="btn btn-primary" v-if="drawer" @click="goChat(drawer.name)">💬 去和 AI 助教聊这个知识点</button>
+    <button class="btn btn-primary" v-if="drawer" @click="goChat(drawer.name)">💬 去和小屿老师聊这个知识点</button>
     <button class="btn btn-ghost" @click="drawer=null">关闭</button>
   </aside>
   <!-- toast -->
@@ -619,15 +627,48 @@ function createStarMap(canvas, tooltip, opts){
   // 默认示例数据（占位，上传解析后 loadData 替换）
   const demo = {
     nodes:[
-      {id:'limits',name:'函数与极限',difficulty:'easy',importance:0.92,summary:'微积分的基石',keyIdea:'理解趋近',example:'x→0 时 sin x ~ x'},
-      {id:'derivative',name:'导数与微分',difficulty:'medium',importance:0.85,summary:'瞬时变化率',keyIdea:'变化快慢',example:'y=x² 在 x=3 斜率 6'},
-      {id:'integral',name:'积分与面积',difficulty:'medium',importance:0.80,summary:'导数的逆运算',keyIdea:'累积与面积',example:'∫₀¹ x dx = 1/2'},
-      {id:'taylor',name:'泰勒展开',difficulty:'hard',importance:0.72,summary:'多项式逼近',keyIdea:'用多项式模仿函数',example:'eˣ ≈ 1+x+x²/2!'},
+      {id:'functions',name:'函数与极限',difficulty:'easy',importance:0.96,summary:'微积分的第一块基石',keyIdea:'理解映射与「无限趋近」',example:'x→0 时 sin x ~ x，极限是工具不是口诀'},
+      {id:'continuity',name:'连续性与间断',difficulty:'easy',importance:0.72,summary:'探究函数在某点是否「平滑不断开」',keyIdea:'一处连续 = 左右极限相等且等于函数值',example:'f(x)=(x²−1)/(x−1) 在 x=1 处为可去间断点'},
+      {id:'derivative',name:'导数与微分',difficulty:'medium',importance:0.90,summary:'函数的瞬时变化率',keyIdea:'变化快慢与切线斜率',example:'y=x² 在 x=3 的导数 6，即斜率 6'},
+      {id:'derivative_app',name:'导数应用',difficulty:'medium',importance:0.82,summary:'用导数判断单调性与极值',keyIdea:'一阶导定单调，二阶导定凹凸',example:"f'=0 且 f''<0 处为极大值点"},
+      {id:'integral',name:'积分与面积',difficulty:'medium',importance:0.88,summary:'导数的逆运算，累积与求面积',keyIdea:'原函数 + 分割求和再取极限',example:'∫₀¹ x dx = 1/2'},
+      {id:'diffeq',name:'微分方程',difficulty:'hard',importance:0.78,summary:'描述变量与其变化率的关系',keyIdea:'从关系式还原函数',example:"y'=y 的解是 y=Ceˣ，描述初等增长"},
+      {id:'taylor',name:'泰勒展开',difficulty:'hard',importance:0.76,summary:'用多项式逼近复杂函数',keyIdea:'在一点附近用多项式「仿刻」原函数',example:'eˣ ≈ 1+x+x²/2+x³/6'},
+      {id:'multi',name:'多元微积分',difficulty:'hard',importance:0.68,summary:'把导数延伸到多元函数',keyIdea:'偏导数、梯度与方向导数',example:'梯度指向函数增长最快的方向'},
     ],
-    edges:[['limits','derivative'],['limits','integral'],['derivative','integral'],['derivative','taylor'],['integral','taylor']],
-    learning_path:['limits','derivative','integral','taylor']
+    edges:[
+      {source:'functions',target:'continuity'},{source:'functions',target:'derivative'},{source:'functions',target:'integral'},
+      {source:'continuity',target:'derivative'},{source:'derivative',target:'derivative_app'},
+      {source:'derivative',target:'integral'},{source:'integral',target:'diffeq'},
+      {source:'derivative',target:'taylor'},{source:'integral',target:'taylor'},
+      {source:'derivative',target:'multi'},{source:'integral',target:'multi'},{source:'taylor',target:'multi'}
+    ],
+    learning_path:['functions','continuity','derivative','derivative_app','integral','taylor']
   };
   const DIFF = { easy:'#34D399', medium:'#FFA94D', hard:'#FF5470' };
+
+  // ---- 星空背景：预生成散布星点 + 星座连线，随世界时钟呼吸闪烁 ----
+  const bgStars = [];
+  const seedRand = (n)=>{ let h=n|0; return ()=>{ h=(h*1103515245+12345)&0x7fffffff; return h/0x7fffffff; }; };
+  {
+    const rnd = seedRand(987654);
+    const COUNT = 180;
+    for(let i=0;i<COUNT;i++){
+      bgStars.push({ x:rnd(), y:rnd(), phase:rnd()*Math.PI*2, speed:0.0005+rnd()*0.0016, size:0.5+rnd()*1.8, tint:i%4 });
+    }
+  }
+  function drawBackdrop(t){
+    const tw = t*0.001;
+    for(const s of bgStars){
+      const bx=s.x*W, by=s.y*H;
+      const a=(Math.sin(tw*s.speed+s.phase)*0.5+0.5)*0.85;
+      ctx.globalAlpha=a;
+      ctx.fillStyle = ['#dce6ff','#c9f3e8','#ffd9ec','#ffe3b8'][s.tint];
+      const r=s.size*(0.4+a*0.9);
+      ctx.beginPath(); ctx.arc(bx,by,r,0,7); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+  }
 
   function resize(){
     const rect = canvas.parentElement.getBoundingClientRect();
@@ -661,7 +702,9 @@ function createStarMap(canvas, tooltip, opts){
   function shade(hex,p){ const n=parseInt(hex.slice(1),16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255; r=Math.max(0,Math.min(255,r+p));g=Math.max(0,Math.min(255,g+p));b=Math.max(0,Math.min(255,b+p)); return 'rgb('+r+','+g+','+b+')'; }
   function hashSeed(str){ let h=7; for(let i=0;i<str.length;i++) h=(h*31+str.charCodeAt(i))|0; return Math.abs(h); }
   function render(t){
-    ctx.clearRect(0,0,W,H); const breathe=Math.sin(t*0.0018)*0.5+0.5;
+    ctx.clearRect(0,0,W,H);
+    drawBackdrop(t);
+    const breathe=Math.sin(t*0.0018)*0.5+0.5;
     for(const e of edges){ const g=ctx.createLinearGradient(e.s.x,e.s.y,e.t.x,e.t.y); g.addColorStop(0,e.s.color);g.addColorStop(1,e.t.color); ctx.globalAlpha=e.op*(0.5+breathe*0.2); ctx.strokeStyle=g; ctx.lineWidth=1.5; ctx.shadowColor=e.s.color; ctx.shadowBlur=7; ctx.beginPath(); ctx.moveTo(e.s.x,e.s.y); ctx.lineTo(e.t.x,e.t.y); ctx.stroke(); }
     ctx.shadowBlur=0;
     for(const n of nodes){
@@ -936,7 +979,7 @@ createApp({
       try {
         const node = knowledge.value.find(k => k.name === topic);
         const mat = (materialSummary.value || '').trim();
-        let parts = ['你是「知屿 ZhiYu」教学智能体里的 AI 助教。'];
+        let parts = ['你是「知屿 ZhiYu」教学智能体里的小屿老师。', '以亲切、耐心的老师口吻指导和答疑。'];
         if (mat) parts.push('当前正在演示的教材资料要点：' + mat);
         if (node && node.name){ parts.push('正在讲解知识点「' + node.name + '」。本知识点要点：' + (node.keyIdea || node.summary || '（未提供）') + (node.example ? '；参考示例：' + node.example : '') + (node.prereq ? '；前置知识：' + node.prereq : '')); }
         else parts.push('当前话题：「' + topic + '」。');
