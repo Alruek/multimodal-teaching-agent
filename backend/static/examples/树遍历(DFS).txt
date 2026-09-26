@@ -1,0 +1,30 @@
+class TreeNode:  #创建树节点类
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def preorder_iter(root):
+    #前序迭代：根 → 左 → 右
+    if not root:
+        return []
+    stack, res = [root], []  #先将根节点存入stack，同时定义空res用于存放结果
+    while stack:
+        node = stack.pop()
+        res.append(node.val)  #存入结果
+        # 先压右子树，再压左子树，这样左子树先出栈
+        if node.right:
+            stack.append(node.right)
+        if node.left:
+            stack.append(node.left)
+    return res
+
+if __name__ == "__main__":
+    # 构建树
+    root = TreeNode(1)
+    root.left = TreeNode(2)
+    root.right = TreeNode(3)
+    root.left.left = TreeNode(4)
+    root.left.right = TreeNode(5)
+    root.right.right = TreeNode(6)
+    print("DFS前序:", preorder_iter(root))
