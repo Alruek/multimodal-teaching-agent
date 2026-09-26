@@ -133,6 +133,7 @@
   .examples-row{display:flex;gap:10px;flex-wrap:wrap}
   .ex-chip{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--text);background:rgba(0,229,195,.07);border:1px solid rgba(0,229,195,.28);padding:9px 15px;border-radius:100px;cursor:pointer;transition:.28s;font-family:var(--font-mono)}
   .ex-chip:hover{background:rgba(0,229,195,.16);transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,229,195,.18)}
+  .file-content{margin-top:14px;width:100%;max-height:300px;overflow:auto;text-align:left;font-family:var(--font-mono);font-size:12.5px;line-height:1.7;color:var(--text);background:rgba(0,0,0,.28);border:1px solid var(--glass-border);border-radius:12px;padding:14px 16px;white-space:pre-wrap;word-break:break-word}
 
   /* 步骤条 */
   .steps-section{max-width:760px;margin:28px auto 0;padding:26px 28px;border-radius:20px;background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(20px)}
@@ -412,8 +413,10 @@
                 <div class="actions-row">
                   <button class="btn-soft accent" @click.stop="gotoStar">✦ 前往知识星图</button>
                   <button class="btn-soft accent" @click.stop="goChat(knowledge[0] && knowledge[0].name || '知识答疑')">💬 立即答疑</button>
+                  <button class="btn-soft accent" @click.stop="showFile=!showFile">📂 查看文件内容</button>
                   <button class="btn-soft" @click.stop="resetUpload">↺ 重新上传</button>
                 </div>
+                <pre class="file-content" v-if="showFile">{{ fileText || '（后端未提取到文本内容，请检查文件）' }}</pre>
                 <div class="empty-hint" v-if="!knowledge.length" style="margin-top:8px;padding:14px 20px">还没有知识点，试着上传一份讲义？</div>
               </template>
               <template v-else>
@@ -739,6 +742,8 @@ createApp({
     const steps = [{name:'识别',emoji:'📄'},{name:'提取',emoji:'🔍'},{name:'结构化',emoji:'🕸️'},{name:'可答疑',emoji:'💬'}];
     const stepIndex = ref(-1);
     const logText = ref('');
+    const fileText = ref('');   // 后端实际提取到的文件内容，供「查看文件」核实
+    const showFile = ref(false); // 是否展开文件内容预览
 
     // 星空图
     const starCanvas = ref(null);
@@ -863,12 +868,14 @@ createApp({
         const adapted = adaptKnowledge(data);
         knowledge.value = adapted.nodes;
         materialSummary.value = (adapted.subject || '').trim();
+        fileText.value = (data.file_text || '').trim();
+        showFile.value = false;
         uploadState.value='success';
         isDemo.value = false;
         starMap && starMap.loadData(adapted);  // 填充星图（不自动跳转，用户在成功卡片手动前往）
       } catch(e){ uploadState.value='error'; errorMsg.value=e.message||'解析失败'; toast(e.message||'解析失败','err'); }
     }
-    function resetUpload(){ uploadState.value='empty'; knowledge.value=[]; materialSummary.value=''; stepIndex.value=-1; if(previewUrl.value){ URL.revokeObjectURL(previewUrl.value); previewUrl.value=''; } fileType.value=''; isDemo.value=true; if(starMap && starMap.demo) starMap.loadData(starMap.demo); }
+    function resetUpload(){ uploadState.value='empty'; knowledge.value=[]; materialSummary.value=''; fileText.value=''; showFile.value=false; stepIndex.value=-1; if(previewUrl.value){ URL.revokeObjectURL(previewUrl.value); previewUrl.value=''; } fileType.value=''; isDemo.value=true; if(starMap && starMap.demo) starMap.loadData(starMap.demo); }
     function gotoStar(){ view.value='star'; nextTick(()=>starMap && starMap.ensureInit()); }
 
     function scrollChat(){ nextTick(()=>{ const el=chatBody.value; if(!el) return; const near = el.scrollHeight - el.scrollTop - el.clientHeight < 90; if(near) el.scrollTop = el.scrollHeight; }); }
@@ -1088,7 +1095,7 @@ createApp({
     return {
       view, levelLabel, overview, recent, difficultyColor,
       lastAsks, totalAsks, masteryList, maxMastery, totalMastery,
-      fileInput, dragging, uploadState, fileName, errorMsg, previewUrl, fileType, steps, stepIndex, logText, knowledge,
+      fileInput, dragging, uploadState, fileName, errorMsg, previewUrl, fileType, steps, stepIndex, logText, knowledge, fileText, showFile,
       starCanvas, mapCard, tooltip, corner, path, drawer, isDemo,
       messages, input, chatBody, current, sending, welcomeQuestions, listening, voiceHint, quote,
       pickFile, onFileChange, onDrop, resetUpload, gotoStar, send, goChat, highlightPath, clearChat, quickAsk, onInputKey, toggleVoice, useSample,

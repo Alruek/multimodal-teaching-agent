@@ -569,15 +569,18 @@ async def analyze(req: AnalyzeRequest):
             "raw": raw,
             "material_type": "",
             "summary": "",
+            "file_text": (text or "")[:8000],
             "knowledge_points": [],
             "relations": [],
         }
 
     # 4) 规范化返回，字段按约定输出
+    #    file_text：后端实际提取到的文件文本，供前端「查看文件内容」，用户可据此核实输出来源
     return {
         "ocr_status": "ok",
         "material_type": data.get("material_type", ""),
         "summary": data.get("summary", ""),
+        "file_text": (text or "")[:8000],
         "knowledge_points": _ensure_list(data.get("knowledge_points")),
         "relations": _ensure_list(data.get("relations")),
     }
