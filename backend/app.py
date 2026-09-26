@@ -309,6 +309,16 @@ def _ocr_pdf_page(doc, page) -> str:
     return ("\n".join(collected)).strip()
 
 
+_rapid_engine = None
+def _get_rapid_engine():
+    """懒加载并缓存 RapidOCR 引擎（单实例），避免逐页 PDF 反复重建模型（很慢）。"""
+    global _rapid_engine
+    if _rapid_engine is None:
+        from rapidocr_onnxruntime import RapidOCR
+        _rapid_engine = RapidOCR()
+    return _rapid_engine
+
+
 def ocr_extract(image_base64: str) -> Optional[str]:
     """OCR 文字提取 —— 本地离线 OCR 优先，腾讯云 OCR 兜底。
 
@@ -333,7 +343,6 @@ def ocr_extract(image_base64: str) -> Optional[str]:
     try:
         import numpy as np
         import cv2
-        from rapidocr_onnxruntime import RapidOCR
 
         img_array = np.frombuffer(image_bytes, np.uint8)
         img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
@@ -343,7 +352,7 @@ def ocr_extract(image_base64: str) -> Optional[str]:
                 status_code=422, detail="无法解码图片，请上传有效的 JPG/PNG 图片。"
             )
 
-        engine = RapidOCR()
+        engine = _get_rapid_engine()
         result, _ = engine(img)
 
         if not result:

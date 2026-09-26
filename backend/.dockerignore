@@ -1,0 +1,11 @@
+.env
+.env.*
+*.pyc
+__pycache__/
+.learnbuddy/
+.dockerignore
+Dockerfile
+*.log
+.test/
+.git
+.gitignore

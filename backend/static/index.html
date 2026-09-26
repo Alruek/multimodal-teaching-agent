@@ -526,12 +526,13 @@
 /* ================= 全局工具 ================= */
 // 后端地址：同源相对路径，绝不出现 DeepSeek API Key
 const API_BASE = (new URLSearchParams(location.search).get('api')) || '';
-async function apiPost(path, body){
-  let res;
+async function apiPost(path, body, timeoutMs){
+  timeoutMs = timeoutMs || 20000;
+  let res, secs = Math.round(timeoutMs/1000);
   const ctrl = new AbortController();
-  const guard = setTimeout(()=>ctrl.abort(), 20000);
+  const guard = setTimeout(()=>ctrl.abort(), timeoutMs);
   try { res = await fetch(API_BASE + path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body), signal: ctrl.signal }); }
-  catch(e){ if(ctrl.signal.aborted) throw new Error('请求超时（20秒），请重试。'); throw new Error('无法连接后端服务，请确认已启动。'); }
+  catch(e){ if(ctrl.signal.aborted) throw new Error('请求超时（'+secs+'秒），请重试。'); throw new Error('无法连接后端服务，请确认已启动。'); }
   finally{ clearTimeout(guard); }
   const data = await res.json().catch(()=>({ detail:'后端返回非 JSON' }));
   if(!res.ok) throw new Error(data.detail || ('后端请求失败（HTTP '+res.status+'）'));
@@ -820,7 +821,7 @@ createApp({
         if(isText){ body = { pdf_text: await readAsText(file) }; }
         else if(isPdf){ body = { pdf_base64: await readAsBase64(file) }; }
         else { body = { image_base64: await readAsBase64(file) }; }
-        const data = await apiPost('/api/analyze', body);
+        const data = await apiPost('/api/analyze', body, 120000);
         if(data.ocr_status === 'pending'){ uploadState.value='error'; errorMsg.value=(data.message||'OCR 待接入')+'（图片识别暂未接入，请上传 .txt/.md 文本文件）'; return; }
         const adapted = adaptKnowledge(data);
         knowledge.value = adapted.nodes;
@@ -904,7 +905,7 @@ createApp({
           else if(m.role === 'ai' && m.plain) hist.push({ role:'assistant', content:m.plain });
         }
         const payload = { messages:[{ role:'system', content:sys }, ...hist.slice(-24)] };
-        const data = await apiPost('/api/chat', payload);
+        const data = await apiPost('/api/chat', payload, 60000);
         if(reqId !== chatReqSeq) return;          // 已被清空/新请求取代，丢弃本次结果
         const reply = data.reply || '（后端未返回回答）';
         msgObj.plain = reply;

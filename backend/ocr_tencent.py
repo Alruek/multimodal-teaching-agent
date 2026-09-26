@@ -22,14 +22,14 @@ from tencentcloud.common.profile.http_profile import HttpProfile
 from tencentcloud.ocr.v20181119 import ocr_client, models
 
 
-def extract_text_from_image_base64(image_base64: str) -> str:
-    """调用腾讯云「通用印刷体识别」，返回拼接后的纯文本。
+_client = None
 
-    参数：
-        image_base64: 图片的 base64（不含 data:image/...;base64, 前缀）
-    返回：
-        识别出的文字，多行用换行符拼接。
-    """
+
+def _get_client():
+    """懒加载并缓存腾讯云 OCR 客户端（跨请求复用，避免反复重建连接池）。"""
+    global _client
+    if _client is not None:
+        return _client
     secret_id = os.environ.get("TENCENT_SECRET_ID", "")
     secret_key = os.environ.get("TENCENT_SECRET_KEY", "")
     if not secret_id or not secret_key:
@@ -40,11 +40,25 @@ def extract_text_from_image_base64(image_base64: str) -> str:
     # 国内可选地域：ap-guangzhou（广州）、ap-shanghai、ap-beijing 等
     http_profile = HttpProfile()
     http_profile.endpoint = "ocr.tencentcloudapi.com"
+    http_profile.reqTimeout = 30          # 单次请求超时（秒），避免无响应拖死整条链路
+    http_profile.keepAlive = 1            # 复用长连接，提升多图识别速度
 
     client_profile = ClientProfile()
     client_profile.httpProfile = http_profile
 
-    client = ocr_client.OcrClient(cred, "ap-guangzhou", client_profile)
+    _client = ocr_client.OcrClient(cred, "ap-guangzhou", client_profile)
+    return _client
+
+
+def extract_text_from_image_base64(image_base64: str) -> str:
+    """调用腾讯云「通用印刷体识别」，返回拼接后的纯文本。
+
+    参数：
+        image_base64: 图片的 base64（不含 data:image/...;base64, 前缀）
+    返回：
+        识别出的文字，多行用换行符拼接。
+    """
+    client = _get_client()
 
     req = models.GeneralBasicOCRRequest()
     req.ImageBase64 = image_base64  # 直接传 base64（图片 ≤ 7MB，分辨率建议 ≤ 6000px）
