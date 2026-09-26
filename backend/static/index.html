@@ -617,6 +617,18 @@ function adaptKnowledge(data){
 }
 
 /* ================= 力导向星空图（独立于 Vue，避免响应式开销） ================= */
+/* 初始化演示知识点源：学习概览与星空图共用，保证知识点数量一致 */
+const DEMO_KP_NODES = [
+  {id:'functions',name:'函数与极限',difficulty:'easy',importance:0.96,color:'#34d399',summary:'微积分的第一块基石',keyIdea:'理解映射与「无限趋近」',example:'x→0 时 sin x ~ x，极限是工具不是口诀'},
+  {id:'continuity',name:'连续性与间断',difficulty:'easy',importance:0.72,color:'#34d399',summary:'探究函数在某点是否「平滑不断开」',keyIdea:'一处连续 = 左右极限相等且等于函数值',example:'f(x)=(x2-1)/(x-1) 在 x=1 处为可去间断点'},
+  {id:'derivative',name:'导数与微分',difficulty:'medium',importance:0.90,color:'#22d3ee',summary:'函数的瞬时变化率',keyIdea:'变化快慢与切线斜率',example:'y=x2 在 x=3 的导数为 6，即斜率 6'},
+  {id:'derivative_app',name:'导数应用',difficulty:'medium',importance:0.82,color:'#22d3ee',summary:'用导数判断单调性与极值',keyIdea:'一阶导定单调，二阶导定凹凸',example:"f'=0 且 f''<0 处为极大值点"},
+  {id:'integral',name:'积分与面积',difficulty:'medium',importance:0.88,color:'#22d3ee',summary:'导数的逆运算，累积与求面积',keyIdea:'原函数 + 分割求和再取极限',example:'∫01 x dx = 1/2'},
+  {id:'diffeq',name:'微分方程',difficulty:'hard',importance:0.78,color:'#ff6b9d',summary:'描述变量与其变化率的关系',keyIdea:'从关系式还原函数',example:"y'=y 的解是 y=Ce^x，描述初等增长"},
+  {id:'taylor',name:'泰勒展开',difficulty:'hard',importance:0.76,color:'#ff6b9d',summary:'用多项式逼近复杂函数',keyIdea:'在一点附近用多项式逼近原函数',example:'e^x ≈ 1+x+x2/2+x3/6'},
+  {id:'multi',name:'多元微积分',difficulty:'hard',importance:0.68,color:'#ff6b9d',summary:'把导数延伸到多元函数',keyIdea:'偏导向量、梯度与方向导数',example:'梯度指向函数增长最快的方向'},
+];
+
 function createStarMap(canvas, tooltip, opts){
   const ctx = canvas.getContext('2d');
   const onSelect = opts.onSelect || (()=>{});
@@ -807,8 +819,8 @@ createApp({
     const chatBody = ref(null);
     const current = ref('知识答疑');
 
-    // 适配后的知识点（nodes）
-    const knowledge = ref([]);
+    // 适配后的知识点（nodes）：初始填充演示数据，使学习概览与星空图知识点数量一致
+    const knowledge = ref(DEMO_KP_NODES.map(n => ({ ...n })));
 
     // 已解析讲义的整体主题/要点（用于答疑时给 AI 提供资料上下文）
     const materialSummary = ref('');
@@ -920,7 +932,7 @@ createApp({
         starMap && starMap.loadData(adapted);  // 填充星图（不自动跳转，用户在成功卡片手动前往）
       } catch(e){ uploadState.value='error'; errorMsg.value=e.message||'解析失败'; toast(e.message||'解析失败','err'); }
     }
-    function resetUpload(){ uploadState.value='empty'; knowledge.value=[]; materialSummary.value=''; fileText.value=''; showFile.value=false; stepIndex.value=-1; if(previewUrl.value){ URL.revokeObjectURL(previewUrl.value); previewUrl.value=''; } fileType.value=''; isDemo.value=true; if(starMap && starMap.demo) starMap.loadData(starMap.demo); }
+    function resetUpload(){ uploadState.value='empty'; knowledge.value = DEMO_KP_NODES.map(n => ({ ...n })); materialSummary.value=''; fileText.value=''; showFile.value=false; stepIndex.value=-1; if(previewUrl.value){ URL.revokeObjectURL(previewUrl.value); previewUrl.value=''; } fileType.value=''; isDemo.value=true; if(starMap && starMap.demo) starMap.loadData(starMap.demo); }
     function gotoStar(){ view.value='star'; nextTick(()=>starMap && starMap.ensureInit()); }
 
     function scrollChat(){ nextTick(()=>{ const el=chatBody.value; if(!el) return; const near = el.scrollHeight - el.scrollTop - el.clientHeight < 90; if(near) el.scrollTop = el.scrollHeight; }); }
