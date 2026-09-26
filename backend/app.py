@@ -303,6 +303,7 @@ def _ocr_pdf_page(doc, page) -> str:
         if not img_bytes:
             continue
         page_text = ocr_extract(base64.b64encode(img_bytes).decode())
+        del img_bytes  # 立即释放本页图片字节，降低逐页 OCR 的峰值内存
         if page_text:
             collected.append(page_text)
             continue  # 已拿到本页文字，不再识别更多图（控制成本）
@@ -317,6 +318,25 @@ def _get_rapid_engine():
         from rapidocr_onnxruntime import RapidOCR
         _rapid_engine = RapidOCR()
     return _rapid_engine
+
+
+_OCR_MAX_DIM = 2000  # 送 OCR 前的图片最大边长（像素），超出则等比缩小以省内存
+
+
+def _downscale_for_ocr(img):
+    """把超高清图片等比缩小到 _OCR_MAX_DIM 以内，控制内存与耗时。返回处理后的图（可能仍是原图）。"""
+    try:
+        import cv2
+        h, w = img.shape[:2]
+        if w <= _OCR_MAX_DIM and h <= _OCR_MAX_DIM:
+            return img
+        scale = _OCR_MAX_DIM / float(max(w, h))
+        nw, nh = max(1, int(round(w * scale))), max(1, int(round(h * scale)))
+        small = cv2.resize(img, (nw, nh), interpolation=cv2.INTER_AREA)
+        del img
+        return small
+    except Exception:
+        return img
 
 
 def ocr_extract(image_base64: str) -> Optional[str]:
@@ -346,14 +366,20 @@ def ocr_extract(image_base64: str) -> Optional[str]:
 
         img_array = np.frombuffer(image_bytes, np.uint8)
         img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+        del img_array  # 及时释放原始字节缓冲
         if img is None:
             # 无效图片：本地与云端都无法解码，直接拒绝，不浪费云端调用
             raise HTTPException(
                 status_code=422, detail="无法解码图片，请上传有效的 JPG/PNG 图片。"
             )
 
+        # 内存保护：超高清原图先等比缩小到上限，避免解码后 numpy 数组过大挤爆 RAM
+        # （Render 免费实例仅 512MB；识别清晰度在 2000px 内足够）
+        img = _downscale_for_ocr(img)
+
         engine = _get_rapid_engine()
         result, _ = engine(img)
+        del img  # 识别完立即释放图像数组，降低峰值内存
 
         if not result:
             # 离线识别不出字（可能是特殊字体 / 复杂背景）→ 交给腾讯云兜底
@@ -385,9 +411,25 @@ def _tencent_fallback(image_bytes: bytes, image_base64: str) -> Optional[str]:
     if not image_bytes:
         raise HTTPException(status_code=422, detail="图片内容为空。")
     try:
-        # 延迟导入：避免 SDK 未安装时顶部 import 直接崩溃
+        # 内存保护：腾讯 OCR 同样用“缩小后”的图，避免超大原图撑爆 RAM / 超 request 体积上限
+        tencent_b64 = image_base64
+        try:
+            import numpy as np
+            import cv2
+            arr = np.frombuffer(image_bytes, np.uint8)
+            im = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+            del arr
+            if im is not None:
+                im = _downscale_for_ocr(im)
+                ok, buf = cv2.imencode(".jpg", im, [cv2.IMWRITE_JPEG_QUALITY, 90])
+                del im
+                if ok:
+                    tencent_b64 = base64.b64encode(buf.tobytes()).decode()
+                    del buf
+        except Exception:
+            pass  # 缩图失败则退回原 base64
         from ocr_tencent import extract_text_from_image_base64
-        return extract_text_from_image_base64(image_base64)
+        return extract_text_from_image_base64(tencent_b64)
     except (ImportError, ModuleNotFoundError):
         logger.warning("未安装 tencentcloud-sdk-python-ocr，OCR 兜底不可用。")
         return None
